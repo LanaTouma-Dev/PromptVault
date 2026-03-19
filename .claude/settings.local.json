@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(\"/c/Projects/Syriatel Prompt:*)",
-      "Bash(python seed.py)",
-      "Bash(npx ng build --configuration development)"
-    ]
-  }
-}
