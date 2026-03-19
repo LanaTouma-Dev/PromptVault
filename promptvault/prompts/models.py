@@ -1,0 +1,136 @@
+import re
+from django.db import models
+from django.contrib.auth.models import User
+from django.utils.text import slugify
+
+
+def extract_variables(content):
+    """Extract {{variable}} placeholders from prompt content."""
+    return sorted(set(re.findall(r'\{\{(\w+)\}\}', content)))
+
+
+class Category(models.Model):
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(unique=True, blank=True)
+    color = models.CharField(max_length=30, default='blue')   # Tailwind color name
+    icon = models.CharField(max_length=50, default='folder')  # Material Symbol name
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['order', 'name']
+        verbose_name_plural = 'Categories'
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
+class Tag(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    slug = models.SlugField(unique=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    avatar_url = models.URLField(blank=True)
+    bio = models.TextField(blank=True)
+    role = models.CharField(max_length=100, blank=True)  # e.g. "Senior Engineer"
+
+    def __str__(self):
+        return f'{self.user.username} profile'
+
+
+class AITool(models.Model):
+    PRICING_FREE      = 'free'
+    PRICING_FREEMIUM  = 'freemium'
+    PRICING_PAID      = 'paid'
+    PRICING_CHOICES   = [
+        ('free',     'Free'),
+        ('freemium', 'Free tier available'),
+        ('paid',     'Paid only'),
+    ]
+
+    name     = models.CharField(max_length=100)
+    slug     = models.SlugField(unique=True, blank=True)
+    provider = models.CharField(max_length=100, blank=True)  # "Anthropic", "OpenAI" …
+    pricing  = models.CharField(max_length=20, choices=PRICING_CHOICES, default='paid')
+    color    = models.CharField(max_length=30, default='slate')  # Tailwind color name for badge
+
+    class Meta:
+        ordering = ['name']
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
+class Prompt(models.Model):
+    VISIBILITY_SHARED = 'shared'
+    VISIBILITY_PRIVATE = 'private'
+    VISIBILITY_CHOICES = [
+        (VISIBILITY_SHARED, 'Shared'),
+        (VISIBILITY_PRIVATE, 'Private'),
+    ]
+
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    content = models.TextField()
+    variables = models.JSONField(default=list, blank=True)
+
+    author = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name='prompts'
+    )
+    category = models.ForeignKey(
+        Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='prompts'
+    )
+    tags             = models.ManyToManyField(Tag,    blank=True, related_name='prompts')
+    compatible_tools = models.ManyToManyField('AITool', blank=True, related_name='prompts')
+
+    visibility = models.CharField(
+        max_length=20, choices=VISIBILITY_CHOICES, default=VISIBILITY_SHARED
+    )
+    is_hot = models.BooleanField(default=False)
+    vote_count = models.IntegerField(default=0)
+    copy_count = models.IntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        # Auto-detect variables before saving
+        self.variables = extract_variables(self.content)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title
+
+
+class Vote(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='votes')
+    prompt = models.ForeignKey(Prompt, on_delete=models.CASCADE, related_name='votes')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'prompt')
+
+    def __str__(self):
+        return f'{self.user.username} → {self.prompt.title}'
