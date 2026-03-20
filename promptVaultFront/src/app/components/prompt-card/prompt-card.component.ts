@@ -37,14 +37,22 @@ const CATEGORY_COLORS: Record<string, string> = {
             </span>
           }
         </div>
-        <!-- Copy button -->
-        <button
-          class="opacity-0 group-hover:opacity-100 transition p-1.5 rounded-lg hover:bg-slate-100"
-          title="Copy prompt"
-          (click)="$event.stopPropagation(); doCopy()"
-        >
-          <span class="material-symbols-outlined text-[18px] text-slate-500">content_copy</span>
-        </button>
+        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+          <button
+            class="p-1.5 rounded-lg hover:bg-slate-100"
+            title="Save to collection"
+            (click)="$event.stopPropagation(); saveToCollection.emit()"
+          >
+            <span class="material-symbols-outlined text-[18px] text-slate-500 hover:text-brand transition">bookmark_add</span>
+          </button>
+          <button
+            class="p-1.5 rounded-lg hover:bg-slate-100"
+            title="Copy prompt"
+            (click)="$event.stopPropagation(); doCopy()"
+          >
+            <span class="material-symbols-outlined text-[18px] text-slate-500">content_copy</span>
+          </button>
+        </div>
       </div>
 
       <!-- Title + description -->
@@ -123,6 +131,7 @@ export class PromptCardComponent {
   prompt = input.required<Prompt>();
   open = output<Prompt>();
   voteChanged = output<{ id: number; vote_count: number }>();
+  saveToCollection = output<void>();
 
   private promptService = inject(PromptService);
   private auth = inject(AuthService);

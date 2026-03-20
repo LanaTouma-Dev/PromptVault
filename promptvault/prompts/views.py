@@ -6,11 +6,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticate
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Category, Tag, Prompt, Vote, AITool
+from .models import Category, Tag, Prompt, Vote, AITool, Collection, CollectionItem
 from .serializers import (
     CategorySerializer, TagSerializer, AIToolSerializer,
     PromptListSerializer, PromptDetailSerializer,
-    RegisterSerializer,
+    RegisterSerializer, CollectionSerializer, CollectionItemSerializer,
 )
 
 
@@ -114,3 +114,58 @@ class MeView(APIView):
             'first_name': user.first_name,
             'last_name': user.last_name,
         })
+
+
+class CollectionViewSet(viewsets.ModelViewSet):
+    """CRUD for the logged-in user's own collections."""
+    serializer_class = CollectionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Collection.objects.filter(owner=self.request.user).prefetch_related(
+            'items__prompt'
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+    @action(detail=True, methods=['post'], url_path='add')
+    def add_prompt(self, request, pk=None):
+        collection = self.get_object()
+        prompt_id = request.data.get('prompt_id')
+        if not prompt_id:
+            return Response({'detail': 'prompt_id required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            prompt = Prompt.objects.get(pk=prompt_id)
+        except Prompt.DoesNotExist:
+            return Response({'detail': 'Prompt not found.'}, status=status.HTTP_404_NOT_FOUND)
+        item, created = CollectionItem.objects.get_or_create(
+            collection=collection, prompt=prompt,
+            defaults={'order': collection.items.count()}
+        )
+        return Response(
+            {'added': created, 'item_id': item.id},
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        )
+
+    @action(detail=True, methods=['delete'], url_path='remove/(?P<prompt_id>[^/.]+)')
+    def remove_prompt(self, request, pk=None, prompt_id=None):
+        collection = self.get_object()
+        deleted, _ = CollectionItem.objects.filter(
+            collection=collection, prompt_id=prompt_id
+        ).delete()
+        if deleted:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({'detail': 'Not in collection.'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=['get'], url_path='prompts')
+    def prompts(self, request, pk=None):
+        collection = self.get_object()
+        items = collection.items.select_related(
+            'prompt__author', 'prompt__category'
+        ).prefetch_related(
+            'prompt__tags', 'prompt__compatible_tools', 'prompt__votes'
+        ).order_by('order', 'added_at')
+        prompts = [item.prompt for item in items]
+        serializer = PromptListSerializer(prompts, many=True, context={'request': request})
+        return Response({'count': len(prompts), 'results': serializer.data})

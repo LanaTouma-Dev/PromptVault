@@ -65,3 +65,16 @@ export interface PromptFilters {
   hot?: boolean;
   page?: number;
 }
+
+export interface Collection {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  is_public: boolean;
+  prompt_count: number;
+  preview_prompts: { id: number; title: string }[];
+  owner_username: string;
+  created_at: string;
+  updated_at: string;
+}

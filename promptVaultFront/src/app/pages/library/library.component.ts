@@ -1,6 +1,6 @@
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 
 import { Prompt } from '../../models/prompt.model';
@@ -12,6 +12,7 @@ import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { PromptCardComponent } from '../../components/prompt-card/prompt-card.component';
 import { AuthModalComponent } from '../../components/auth-modal/auth-modal.component';
 import { AddPromptModalComponent } from '../../components/add-prompt-modal/add-prompt-modal.component';
+import { SaveToCollectionModalComponent } from '../../components/save-to-collection-modal/save-to-collection-modal.component';
 
 @Component({
   selector: 'app-library',
@@ -23,6 +24,7 @@ import { AddPromptModalComponent } from '../../components/add-prompt-modal/add-p
     PromptCardComponent,
     AuthModalComponent,
     AddPromptModalComponent,
+    SaveToCollectionModalComponent,
   ],
   template: `
     <app-navbar
@@ -37,9 +39,29 @@ import { AddPromptModalComponent } from '../../components/add-prompt-modal/add-p
       (selectCategory)="setCategory($event)"
     />
 
-    <!-- Main content offset: 52px nav + 224px sidebar -->
-    <main class="ml-56 pt-[52px] min-h-screen bg-surface">
+    <main class="ml-56 pt-[52px] min-h-screen bg-slate-50">
       <div class="max-w-5xl mx-auto px-6 py-6">
+
+        <!-- Welcome Banner -->
+        @if (auth.isLoggedIn()) {
+          <div class="mb-8 rounded-2xl p-6 relative overflow-hidden bg-gradient-to-r from-slate-900 to-slate-800 shadow-lg border border-slate-700">
+            <!-- Decorative circle -->
+            <div class="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-brand opacity-20 blur-3xl mix-blend-screen pointer-events-none"></div>
+            
+            <div class="relative z-10 flex items-center justify-between">
+              <div>
+                <h1 class="text-2xl font-display font-bold text-white mb-2">Good morning, {{ auth.user()?.first_name || auth.user()?.username }} 👋</h1>
+                <p class="text-slate-300 text-sm">Welcome back to the PromptVault. You have {{ totalCount() }} prompts available.</p>
+              </div>
+              <div class="hidden sm:block">
+                 <button (click)="handleAddPrompt()" class="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 py-2.5 rounded-xl text-sm font-semibold backdrop-blur-md transition flex items-center gap-2 shadow-sm">
+                   <span class="material-symbols-outlined text-[18px]">add</span>
+                   New Prompt
+                 </button>
+              </div>
+            </div>
+          </div>
+        }
 
         <!-- Hot prompts strip -->
         @if (hotPrompts().length && activeCategory() === 'all' && !searchQuery()) {
@@ -121,6 +143,7 @@ import { AddPromptModalComponent } from '../../components/add-prompt-modal/add-p
                 [prompt]="p"
                 (open)="openDetail($event)"
                 (voteChanged)="onVoteChanged($event)"
+                (saveToCollection)="handleSaveToCollection(p)"
               />
             }
           </div>
@@ -158,6 +181,9 @@ import { AddPromptModalComponent } from '../../components/add-prompt-modal/add-p
     @if (showAddPrompt) {
       <app-add-prompt-modal (close)="showAddPrompt = false" (saved)="reload()" />
     }
+    @if (promptToSave) {
+      <app-save-to-collection-modal [prompt]="promptToSave" (close)="promptToSave = null" />
+    }
   `,
   styles: [`
     :host { display: block; }
@@ -167,8 +193,9 @@ import { AddPromptModalComponent } from '../../components/add-prompt-modal/add-p
 })
 export class LibraryComponent implements OnInit {
   private promptService = inject(PromptService);
-  private auth = inject(AuthService);
+  auth = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   prompts = signal<Prompt[]>([]);
   hotPrompts = signal<Prompt[]>([]);
@@ -182,13 +209,30 @@ export class LibraryComponent implements OnInit {
 
   showAuth = false;
   showAddPrompt = false;
+  promptToSave: Prompt | null = null;
 
   private searchSubject = new Subject<string>();
   private _searchQuery = signal('');
   searchQuery = this._searchQuery.asReadonly();
 
   ngOnInit() {
-    this.loadPrompts();
+    this.route.queryParams.subscribe(params => {
+      if (params['cat']) {
+        this.activeCategory.set(params['cat']);
+      } else {
+        this.activeCategory.set('all');
+      }
+      
+      if (params['q'] !== undefined) {
+        this._searchQuery.set(params['q']);
+      } else {
+        this._searchQuery.set('');
+      }
+      
+      this.currentPage.set(1);
+      this.loadPrompts();
+    });
+
     this.loadHotPrompts();
 
     // Debounce search
@@ -196,9 +240,10 @@ export class LibraryComponent implements OnInit {
       debounceTime(350),
       distinctUntilChanged(),
     ).subscribe(q => {
-      this._searchQuery.set(q);
-      this.currentPage.set(1);
-      this.loadPrompts();
+      this.router.navigate([], { 
+        queryParams: { q: q || null, cat: this.activeCategory() === 'all' ? null : this.activeCategory() },
+        queryParamsHandling: 'merge'
+      });
     });
   }
 
@@ -207,9 +252,10 @@ export class LibraryComponent implements OnInit {
   }
 
   setCategory(slug: string) {
-    this.activeCategory.set(slug);
-    this.currentPage.set(1);
-    this.loadPrompts();
+    this.router.navigate([], { 
+      queryParams: { cat: slug === 'all' ? null : slug, q: this._searchQuery() || null },
+      queryParamsHandling: 'merge' 
+    });
   }
 
   setOrdering(val: string) {
@@ -260,6 +306,14 @@ export class LibraryComponent implements OnInit {
       this.showAuth = true;
     } else {
       this.showAddPrompt = true;
+    }
+  }
+
+  handleSaveToCollection(prompt: Prompt) {
+    if (!this.auth.isLoggedIn()) {
+      this.showAuth = true;
+    } else {
+      this.promptToSave = prompt;
     }
   }
 

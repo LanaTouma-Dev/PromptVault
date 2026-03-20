@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from .models import Category, Tag, AITool, UserProfile, Prompt, Vote
+from .models import Category, Tag, AITool, UserProfile, Prompt, Vote, Collection, CollectionItem
 
 
 class AIToolSerializer(serializers.ModelSerializer):
@@ -137,3 +137,36 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(**validated_data)
         UserProfile.objects.create(user=user)
         return user
+
+
+class CollectionItemSerializer(serializers.ModelSerializer):
+    prompt = PromptListSerializer(read_only=True)
+    prompt_id = serializers.PrimaryKeyRelatedField(
+        queryset=Prompt.objects.all(), source='prompt', write_only=True
+    )
+
+    class Meta:
+        model = CollectionItem
+        fields = ['id', 'prompt', 'prompt_id', 'order', 'added_at']
+
+
+class CollectionSerializer(serializers.ModelSerializer):
+    prompt_count = serializers.SerializerMethodField()
+    preview_prompts = serializers.SerializerMethodField()
+    owner_username = serializers.CharField(source='owner.username', read_only=True)
+
+    class Meta:
+        model = Collection
+        fields = [
+            'id', 'name', 'description', 'icon', 'is_public',
+            'prompt_count', 'preview_prompts', 'owner_username',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['owner_username', 'prompt_count', 'preview_prompts', 'created_at', 'updated_at']
+
+    def get_prompt_count(self, obj):
+        return obj.items.count()
+
+    def get_preview_prompts(self, obj):
+        items = obj.items.select_related('prompt').order_by('order', 'added_at')[:3]
+        return [{'id': i.prompt.id, 'title': i.prompt.title} for i in items]

@@ -134,3 +134,39 @@ class Vote(models.Model):
 
     def __str__(self):
         return f'{self.user.username} → {self.prompt.title}'
+
+
+class Collection(models.Model):
+    """A named, user-owned playlist of prompts."""
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='collections')
+    name = models.CharField(max_length=120)
+    description = models.TextField(blank=True)
+    icon = models.CharField(max_length=10, default='📁')  # emoji
+    is_public = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f'{self.owner.username}: {self.name}'
+
+    @property
+    def prompt_count(self):
+        return self.items.count()
+
+
+class CollectionItem(models.Model):
+    """An ordered entry of a prompt inside a collection."""
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE, related_name='items')
+    prompt = models.ForeignKey(Prompt, on_delete=models.CASCADE, related_name='collection_items')
+    order = models.PositiveIntegerField(default=0)
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('collection', 'prompt')
+        ordering = ['order', 'added_at']
+
+    def __str__(self):
+        return f'{self.collection.name} ← {self.prompt.title}'

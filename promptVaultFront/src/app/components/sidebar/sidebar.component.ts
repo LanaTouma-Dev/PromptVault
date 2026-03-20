@@ -1,12 +1,15 @@
-import { Component, input, output, OnInit, inject } from '@angular/core';
+import { Component, input, output, OnInit, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Category } from '../../models/prompt.model';
+import { RouterModule } from '@angular/router';
+import { Category, Collection } from '../../models/prompt.model';
 import { CategoryService } from '../../core/services/category.service';
+import { CollectionService } from '../../core/services/collection.service';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   template: `
     <aside class="fixed left-0 top-[52px] w-56 bg-white border-r border-slate-200 flex flex-col"
            style="height: calc(100vh - 52px);">
@@ -44,6 +47,31 @@ import { CategoryService } from '../../core/services/category.service';
           </button>
         }
 
+        <!-- My Collections (if logged in) -->
+        @if (auth.isLoggedIn()) {
+          <div class="mt-6">
+            <div class="flex items-center justify-between px-2 mb-2">
+              <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">My Collections</p>
+            </div>
+            
+            @for (c of collections(); track c.id) {
+              <a
+                [routerLink]="['/collection', c.id]"
+                class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors mb-0.5 mt-1 text-slate-600 hover:bg-slate-100"
+                routerLinkActive="bg-red-50 text-brand"
+              >
+                <span class="text-[16px]">{{ c.icon }}</span>
+                <span class="truncate">{{ c.name }}</span>
+                <span class="ml-auto text-xs text-slate-400 tabular-nums">{{ c.prompt_count }}</span>
+              </a>
+            }
+            
+            @if (collections().length === 0) {
+              <p class="px-3 py-2 text-xs text-slate-500 italic">No collections yet.</p>
+            }
+          </div>
+        }
+
         <!-- Top Technologies -->
         <div class="mt-5 px-2">
           <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Top Technologies</p>
@@ -76,12 +104,32 @@ export class SidebarComponent implements OnInit {
   selectCategory = output<string>();
 
   private categoryService = inject(CategoryService);
+  private collectionService = inject(CollectionService);
+  auth = inject(AuthService);
+  
   categories: Category[] = [];
+  collections = signal<Collection[]>([]);
   topTags = ['React', 'TypeScript', 'Python', 'Docker', 'K8s', 'GraphQL', 'PostgreSQL'];
 
   ngOnInit() {
     this.categoryService.getCategories().subscribe(res => {
       this.categories = res.results;
+    });
+  }
+
+  constructor() {
+    effect(() => {
+      if (this.auth.isLoggedIn()) {
+        this.loadCollections();
+      } else {
+        this.collections.set([]);
+      }
+    });
+  }
+
+  loadCollections() {
+    this.collectionService.getMyCollections().subscribe(res => {
+      this.collections.set(res.results);
     });
   }
 }

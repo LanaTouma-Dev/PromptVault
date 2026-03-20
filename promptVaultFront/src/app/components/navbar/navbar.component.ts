@@ -12,10 +12,8 @@ import { AuthService } from '../../core/services/auth.service';
 
       <!-- Brand -->
       <div class="flex items-center gap-2.5 flex-shrink-0">
-        <img src="syriatel-logo.png" alt="Syriatel" class="h-7 w-auto object-contain" />
         <div class="flex flex-col leading-none">
           <span class="font-display font-bold text-[13px] text-slate-900 tracking-tight">PromptVault</span>
-          <span class="text-[9px] font-semibold tracking-widest uppercase" style="color:#C8102E;">by Syriatel</span>
         </div>
       </div>
 
