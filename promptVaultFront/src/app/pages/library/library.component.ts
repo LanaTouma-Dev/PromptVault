@@ -35,8 +35,10 @@ import { SaveToCollectionModalComponent } from '../../components/save-to-collect
 
     <app-sidebar
       [activeCategory]="activeCategory()"
+      [activeTag]="activeTag()"
       [totalCount]="totalCount()"
       (selectCategory)="setCategory($event)"
+      (selectTag)="setTag($event)"
     />
 
     <main class="ml-56 pt-[52px] min-h-screen bg-slate-50">
@@ -95,15 +97,26 @@ import { SaveToCollectionModalComponent } from '../../components/save-to-collect
 
         <!-- Toolbar -->
         <div class="flex items-center justify-between mb-5">
-          <h2 class="font-display font-bold text-slate-900 text-lg">
-            @if (searchQuery()) {
-              Results for "{{ searchQuery() }}"
-              <span class="text-slate-400 font-normal text-sm ml-2">({{ totalCount() }} found)</span>
-            } @else {
-              Prompt Library
-              <span class="text-slate-400 font-normal text-sm ml-2">{{ totalCount() }} prompts</span>
+          <div class="flex items-center gap-3">
+            <h2 class="font-display font-bold text-slate-900 text-lg">
+              @if (searchQuery()) {
+                Results for "{{ searchQuery() }}"
+                <span class="text-slate-400 font-normal text-sm ml-2">({{ totalCount() }} found)</span>
+              } @else {
+                Prompt Library
+                <span class="text-slate-400 font-normal text-sm ml-2">{{ totalCount() }} prompts</span>
+              }
+            </h2>
+            
+            @if (activeTag()) {
+              <div class="flex items-center gap-2 bg-red-50 text-brand border border-brand/20 px-2.5 py-1 rounded-full text-xs font-semibold">
+                <span>#{{ activeTag() }}</span>
+                <button (click)="setTag(null)" class="flex items-center justify-center hover:bg-brand/10 rounded-full h-4 w-4 transition -mr-1">
+                  <span class="material-symbols-outlined text-[12px]">close</span>
+                </button>
+              </div>
             }
-          </h2>
+          </div>
           <div class="flex items-center gap-2">
             <label class="text-xs text-slate-500">Sort by</label>
             <select
@@ -202,6 +215,7 @@ export class LibraryComponent implements OnInit {
   totalCount = signal(0);
   loading = signal(true);
   activeCategory = signal('all');
+  activeTag = signal<string | null>(null);
   ordering = signal('-created_at');
   currentPage = signal(1);
   pageSize = 20;
@@ -223,13 +237,30 @@ export class LibraryComponent implements OnInit {
         this.activeCategory.set('all');
       }
       
+      if (params['tag']) {
+        this.activeTag.set(params['tag']);
+      } else {
+        this.activeTag.set(null);
+      }
+      
       if (params['q'] !== undefined) {
         this._searchQuery.set(params['q']);
       } else {
         this._searchQuery.set('');
       }
       
-      this.currentPage.set(1);
+      if (params['ordering']) {
+        this.ordering.set(params['ordering']);
+      } else {
+        this.ordering.set('-created_at');
+      }
+      
+      if (params['page']) {
+        this.currentPage.set(+params['page']);
+      } else {
+        this.currentPage.set(1);
+      }
+      
       this.loadPrompts();
     });
 
@@ -241,7 +272,11 @@ export class LibraryComponent implements OnInit {
       distinctUntilChanged(),
     ).subscribe(q => {
       this.router.navigate([], { 
-        queryParams: { q: q || null, cat: this.activeCategory() === 'all' ? null : this.activeCategory() },
+        queryParams: { 
+          q: q || null, 
+          cat: this.activeCategory() === 'all' ? null : this.activeCategory(),
+          tag: this.activeTag() 
+        },
         queryParamsHandling: 'merge'
       });
     });
@@ -253,20 +288,36 @@ export class LibraryComponent implements OnInit {
 
   setCategory(slug: string) {
     this.router.navigate([], { 
-      queryParams: { cat: slug === 'all' ? null : slug, q: this._searchQuery() || null },
+      queryParams: { 
+        cat: slug === 'all' ? null : slug,
+        page: null // reset page to 1
+      },
+      queryParamsHandling: 'merge' 
+    });
+  }
+
+  setTag(slug: string | null) {
+    this.router.navigate([], { 
+      queryParams: { 
+        tag: slug,
+        page: null // reset page to 1
+      },
       queryParamsHandling: 'merge' 
     });
   }
 
   setOrdering(val: string) {
-    this.ordering.set(val);
-    this.currentPage.set(1);
-    this.loadPrompts();
+    this.router.navigate([], { 
+      queryParams: { ordering: val === '-created_at' ? null : val },
+      queryParamsHandling: 'merge' 
+    });
   }
 
   goToPage(p: number) {
-    this.currentPage.set(p);
-    this.loadPrompts();
+    this.router.navigate([], { 
+      queryParams: { page: p === 1 ? null : p },
+      queryParamsHandling: 'merge' 
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -279,6 +330,7 @@ export class LibraryComponent implements OnInit {
     this.promptService.getPrompts({
       search: this._searchQuery() || undefined,
       category: this.activeCategory(),
+      tag: this.activeTag() || undefined,
       ordering: this.ordering(),
       page: this.currentPage(),
     }).subscribe({

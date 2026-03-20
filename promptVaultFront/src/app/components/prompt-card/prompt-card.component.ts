@@ -1,5 +1,6 @@
 import { Component, input, output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { AITool, Prompt } from '../../models/prompt.model';
 import { PromptService } from '../../core/services/prompt.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -17,7 +18,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 @Component({
   selector: 'app-prompt-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   template: `
     <div
       class="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-3 hover:shadow-md hover:border-primary/30 transition cursor-pointer group"
@@ -94,9 +95,18 @@ const CATEGORY_COLORS: Record<string, string> = {
 
       <!-- Tags -->
       @if (prompt().tags.length) {
-        <div class="flex flex-wrap gap-1">
+        <div class="flex flex-wrap gap-1" (click)="$event.stopPropagation()">
           @for (tag of prompt().tags.slice(0, 3); track tag.id) {
-            <span class="px-2 py-0.5 text-[11px] bg-slate-100 text-slate-600 rounded-full"># {{ tag.name }}</span>
+            <a 
+              [routerLink]="['/']" 
+              [queryParams]="{ tag: tag.slug }"
+              class="px-2 py-0.5 text-[11px] bg-slate-100 text-slate-600 rounded-full hover:bg-slate-200 transition"
+            >
+              # {{ tag.name }}
+            </a>
+          }
+          @if (prompt().tags.length > 3) {
+            <span class="px-2 py-0.5 text-[11px] text-slate-400 rounded-full bg-slate-50 border border-slate-100">+{{ prompt().tags.length - 3 }}</span>
           }
         </div>
       }

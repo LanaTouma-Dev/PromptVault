@@ -27,7 +27,7 @@ import { Prompt } from '../../models/prompt.model';
       (onLogin)="showAuth = true"
     />
 
-    <app-sidebar (selectCategory)="goToCategory($event)" />
+    <app-sidebar (selectCategory)="goToCategory($event)" (selectTag)="goToTag($event)" />
 
     <main class="ml-56 pt-[52px] min-h-screen bg-surface">
       <div class="max-w-5xl mx-auto px-6 py-6">
@@ -136,6 +136,10 @@ export class CollectionDetailComponent implements OnInit {
 
   goToCategory(slug: string) {
     this.router.navigate(['/'], { queryParams: { cat: slug } });
+  }
+
+  goToTag(slug: string) {
+    this.router.navigate(['/'], { queryParams: { tag: slug } });
   }
 
   handleAddPrompt() {

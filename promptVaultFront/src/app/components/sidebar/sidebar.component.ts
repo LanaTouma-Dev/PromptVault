@@ -1,9 +1,10 @@
 import { Component, input, output, OnInit, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { Category, Collection } from '../../models/prompt.model';
+import { Category, Collection, Tag } from '../../models/prompt.model';
 import { CategoryService } from '../../core/services/category.service';
 import { CollectionService } from '../../core/services/collection.service';
+import { TagService } from '../../core/services/tag.service';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
@@ -74,12 +75,21 @@ import { AuthService } from '../../core/services/auth.service';
 
         <!-- Top Technologies -->
         <div class="mt-5 px-2">
-          <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Top Technologies</p>
+          <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Popular Tags</p>
           <div class="flex flex-wrap gap-1.5">
-            @for (tag of topTags; track tag) {
-              <span class="px-2 py-0.5 text-[11px] bg-slate-100 text-slate-600 rounded-full cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors">
-                {{ tag }}
-              </span>
+            @for (tag of tags; track tag.id) {
+              <button
+                class="px-2 py-0.5 text-[11px] rounded-full transition-colors font-medium border"
+                [class]="activeTag() === tag.slug 
+                  ? 'bg-red-50 text-brand border-brand/30' 
+                  : 'bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100 hover:border-slate-200'"
+                (click)="selectTag.emit(tag.slug)"
+              >
+                #{{ tag.name }}
+              </button>
+            }
+            @if (tags.length === 0) {
+               <span class="text-xs text-slate-400 italic">No tags yet.</span>
             }
           </div>
         </div>
@@ -100,20 +110,27 @@ import { AuthService } from '../../core/services/auth.service';
 })
 export class SidebarComponent implements OnInit {
   activeCategory = input<string>('all');
+  activeTag = input<string | null>(null);
   totalCount = input<number>(0);
   selectCategory = output<string>();
+  selectTag = output<string>();
 
   private categoryService = inject(CategoryService);
   private collectionService = inject(CollectionService);
+  private tagService = inject(TagService);
   auth = inject(AuthService);
   
   categories: Category[] = [];
   collections = signal<Collection[]>([]);
-  topTags = ['React', 'TypeScript', 'Python', 'Docker', 'K8s', 'GraphQL', 'PostgreSQL'];
+  tags: Tag[] = [];
 
   ngOnInit() {
     this.categoryService.getCategories().subscribe(res => {
       this.categories = res.results;
+    });
+    
+    this.tagService.getTags().subscribe(res => {
+      this.tags = res.results;
     });
   }
 
