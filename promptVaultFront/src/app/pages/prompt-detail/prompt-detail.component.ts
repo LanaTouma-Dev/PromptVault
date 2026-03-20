@@ -12,13 +12,6 @@ import { AddPromptModalComponent } from '../../components/add-prompt-modal/add-p
 
 interface Segment { type: 'text' | 'variable'; value: string; }
 
-const CAT_COLORS: Record<string, string> = {
-  red: 'bg-red-100 text-red-700', blue: 'bg-blue-100 text-blue-700',
-  green: 'bg-green-100 text-green-700', purple: 'bg-purple-100 text-purple-700',
-  orange: 'bg-orange-100 text-orange-700', cyan: 'bg-cyan-100 text-cyan-700',
-  indigo: 'bg-indigo-100 text-indigo-700',
-};
-
 function parseContent(content: string): Segment[] {
   const segs: Segment[] = [];
   const re = /\{\{(\w+)\}\}/g;
@@ -36,6 +29,77 @@ function parseContent(content: string): Segment[] {
   selector: 'app-prompt-detail',
   standalone: true,
   imports: [CommonModule, DatePipe, NavbarComponent, SidebarComponent, AuthModalComponent, AddPromptModalComponent],
+  styles: [`
+    main { background: var(--bg); }
+
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 13px; color: var(--text-muted);
+      transition: color 0.12s; cursor: pointer; background: none; border: none; padding: 0;
+    }
+    .back-btn:hover { color: var(--accent-txt); }
+
+    .cat-badge {
+      padding: 3px 10px; font-size: 11px; font-weight: 700;
+      border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em;
+      background: var(--accent-bg); color: var(--accent-txt);
+    }
+    .hot-badge {
+      padding: 3px 10px; font-size: 11px; font-weight: 700;
+      border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em;
+      background: var(--hot-bg); color: var(--hot);
+    }
+
+    .panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px;
+    }
+
+    .stat-box {
+      text-align: center; padding: 14px;
+      background: var(--surface2); border-radius: 9px;
+    }
+
+    .vote-action {
+      width: 100%; height: 36px; display: flex; align-items: center; justify-content: center; gap: 6px;
+      border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer;
+      border: 1px solid var(--border); background: transparent; color: var(--text-muted);
+      transition: all 0.12s;
+    }
+    .vote-action:hover, .vote-action.voted {
+      border-color: var(--accent); color: var(--accent-txt); background: var(--accent-bg);
+    }
+
+    .var-input {
+      width: 100%; padding: 9px 12px; font-size: 13px; border-radius: 9px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); outline: none; transition: border-color 0.12s, box-shadow 0.12s;
+    }
+    .var-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+    .var-input::placeholder { color: var(--text-muted); opacity: 0.5; }
+
+    .copy-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      height: 40px; padding: 0 22px; border: none; border-radius: 10px;
+      font-size: 13px; font-weight: 600; cursor: pointer; color: #fff;
+      background: var(--accent); transition: opacity 0.15s;
+    }
+    .copy-btn:hover { opacity: 0.88; }
+    .copy-btn.success { background: #16a34a; }
+
+    .meta-row {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 13px; padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .meta-row:last-child { border-bottom: none; }
+
+    .skeleton-line {
+      border-radius: 6px; background: var(--surface2);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  `],
   template: `
     <app-navbar
       (onSearch)="router.navigate(['/'], { queryParams: { q: $event } })"
@@ -44,86 +108,78 @@ function parseContent(content: string): Segment[] {
     />
     <app-sidebar [activeCategory]="''" [totalCount]="0" (selectCategory)="router.navigate(['/'])" />
 
-    <main class="ml-56 pt-[52px] min-h-screen bg-surface">
+    <main class="ml-56 pt-[52px] min-h-screen">
 
       @if (loading()) {
-        <!-- Loading skeleton -->
-        <div class="max-w-6xl mx-auto px-6 py-6 animate-pulse space-y-4">
-          <div class="h-4 w-32 bg-slate-200 rounded"></div>
-          <div class="h-8 w-2/3 bg-slate-200 rounded"></div>
-          <div class="h-4 w-1/2 bg-slate-200 rounded"></div>
+        <div class="max-w-6xl mx-auto px-6 py-6 space-y-4">
+          <div class="skeleton-line h-3 w-28 mb-2"></div>
+          <div class="skeleton-line h-7 w-2/3"></div>
+          <div class="skeleton-line h-4 w-1/2 mt-2"></div>
           <div class="grid grid-cols-3 gap-6 mt-6">
-            <div class="col-span-2 h-64 bg-slate-200 rounded-xl"></div>
-            <div class="h-64 bg-slate-200 rounded-xl"></div>
+            <div class="col-span-2 skeleton-line h-64 rounded-xl"></div>
+            <div class="skeleton-line h-64 rounded-xl"></div>
           </div>
         </div>
 
       } @else if (!prompt()) {
         <div class="flex flex-col items-center justify-center h-96 text-center">
-          <span class="material-symbols-outlined text-5xl text-slate-300 mb-3">search_off</span>
-          <p class="text-slate-500 font-medium">Prompt not found</p>
-          <button (click)="router.navigate(['/'])" class="mt-4 text-sm text-primary hover:underline">← Back to Library</button>
+          <span class="material-symbols-outlined text-5xl mb-3" style="color:var(--border-mid);">search_off</span>
+          <p class="font-medium" style="color:var(--text-muted);">Prompt not found</p>
+          <button (click)="router.navigate(['/'])" class="back-btn mt-4">← Back to Library</button>
         </div>
 
       } @else {
         <div class="max-w-6xl mx-auto px-6 py-6">
 
           <!-- Breadcrumb -->
-          <nav class="flex items-center gap-2 text-sm text-slate-400 mb-5">
-            <button (click)="router.navigate(['/'])" class="hover:text-primary transition flex items-center gap-1">
-              <span class="material-symbols-outlined text-[16px]">arrow_back</span>
+          <nav class="flex items-center gap-2 text-[13px] mb-5" style="color:var(--text-muted);">
+            <button class="back-btn" (click)="router.navigate(['/'])">
+              <span class="material-symbols-outlined" style="font-size:15px;">arrow_back</span>
               Library
             </button>
             <span>/</span>
-            <span class="text-slate-600 truncate max-w-xs">{{ prompt()!.title }}</span>
+            <span class="truncate max-w-xs" style="color:var(--text);">{{ prompt()!.title }}</span>
           </nav>
 
-          <!-- Page header -->
+          <!-- Header -->
           <div class="mb-6">
             <div class="flex items-center gap-2 mb-3 flex-wrap">
               @if (prompt()!.category) {
-                <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full uppercase tracking-wide {{ catColor() }}">
-                  {{ prompt()!.category!.name }}
-                </span>
+                <span class="cat-badge">{{ prompt()!.category!.name }}</span>
               }
               @if (prompt()!.is_hot) {
-                <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full uppercase tracking-wide bg-red-100 text-red-600">
-                  🔥 Hot
-                </span>
+                <span class="hot-badge">🔥 Hot</span>
               }
-              <span class="px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-slate-100 text-slate-500 uppercase tracking-wide">
+              <span class="px-2.5 py-0.5 text-[11px] font-semibold rounded-full uppercase tracking-wide"
+                    style="background:var(--surface2); color:var(--text-muted);">
                 {{ prompt()!.visibility }}
               </span>
             </div>
 
-            <h1 class="font-display font-extrabold text-3xl text-slate-900 mb-2 leading-tight">
+            <h1 class="font-display font-extrabold text-[28px] mb-2 leading-tight" style="color:var(--text);">
               {{ prompt()!.title }}
             </h1>
-            <p class="text-slate-500 text-base leading-relaxed max-w-2xl">{{ prompt()!.description }}</p>
+            <p class="text-[15px] leading-relaxed max-w-2xl" style="color:var(--text-muted);">{{ prompt()!.description }}</p>
 
-            <!-- Author + stats row -->
             <div class="flex items-center gap-5 mt-4">
               <div class="flex items-center gap-2">
-                <div class="h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold text-white"
-                     style="background:#C8102E;">
+                <div class="h-8 w-8 rounded-full flex items-center justify-center text-[12px] font-bold text-white"
+                     style="background:var(--accent);">
                   {{ authorInitials() }}
                 </div>
                 <div class="leading-none">
-                  <p class="text-sm font-medium text-slate-800">{{ authorName() }}</p>
-                  <p class="text-xs text-slate-400">{{ prompt()!.updated_at | date:'MMM d, y' }}</p>
+                  <p class="text-[13px] font-medium" style="color:var(--text);">{{ authorName() }}</p>
+                  <p class="text-[11px]" style="color:var(--text-muted);">{{ prompt()!.updated_at | date:'MMM d, y' }}</p>
                 </div>
               </div>
-              <div class="h-5 w-px bg-slate-200"></div>
-              <button
-                (click)="doVote()"
-                class="flex items-center gap-1.5 text-sm font-medium transition"
-                [class]="prompt()!.has_voted ? 'text-brand' : 'text-slate-500 hover:text-brand'"
-              >
-                <span class="material-symbols-outlined text-[18px]">arrow_upward</span>
+              <div class="h-4 w-px" style="background:var(--border);"></div>
+              <button (click)="doVote()" class="flex items-center gap-1.5 text-[13px] font-medium transition"
+                [style]="prompt()!.has_voted ? 'color:var(--accent-txt)' : 'color:var(--text-muted)'">
+                <span class="material-symbols-outlined" style="font-size:17px;">arrow_upward</span>
                 {{ prompt()!.vote_count }} upvotes
               </button>
-              <span class="flex items-center gap-1.5 text-sm text-slate-400">
-                <span class="material-symbols-outlined text-[18px]">content_copy</span>
+              <span class="flex items-center gap-1.5 text-[13px]" style="color:var(--text-muted);">
+                <span class="material-symbols-outlined" style="font-size:17px;">content_copy</span>
                 {{ prompt()!.copy_count }} copies
               </span>
             </div>
@@ -132,47 +188,41 @@ function parseContent(content: string): Segment[] {
           <!-- Two-column body -->
           <div class="grid grid-cols-3 gap-6">
 
-            <!-- LEFT: Editor + Variable inputs -->
+            <!-- LEFT -->
             <div class="col-span-2 space-y-4">
 
-              <!-- Dark code editor -->
-              <div class="rounded-xl overflow-hidden border border-slate-700" style="background:#0f1117;">
-                <!-- Editor toolbar -->
-                <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-700/80"
-                     style="background:#1a1d27;">
+              <!-- Code editor block (intentionally dark in both modes — it's a code surface) -->
+              <div class="rounded-xl overflow-hidden" style="background:#0f1117; border:1px solid #2a2d3a;">
+                <div class="flex items-center justify-between px-4 py-2.5" style="background:#1a1d27; border-bottom:1px solid #2a2d3a;">
                   <div class="flex items-center gap-2">
                     <div class="flex gap-1.5">
-                      <div class="w-3 h-3 rounded-full bg-red-500/70"></div>
-                      <div class="w-3 h-3 rounded-full bg-yellow-500/70"></div>
-                      <div class="w-3 h-3 rounded-full bg-green-500/70"></div>
+                      <div class="w-3 h-3 rounded-full" style="background:rgba(239,68,68,0.6);"></div>
+                      <div class="w-3 h-3 rounded-full" style="background:rgba(234,179,8,0.6);"></div>
+                      <div class="w-3 h-3 rounded-full" style="background:rgba(34,197,94,0.6);"></div>
                     </div>
-                    <span class="text-[11px] text-slate-500 font-mono ml-2 uppercase tracking-widest">prompt · execution shell</span>
+                    <span class="font-mono text-[10px] tracking-widest uppercase ml-2" style="color:#4b5268;">prompt · execution shell</span>
                   </div>
-                  <button
-                    (click)="copyFilled()"
-                    class="flex items-center gap-1.5 h-7 px-3 rounded-md text-xs font-semibold transition"
-                    [class]="copied() ? 'bg-green-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'"
-                  >
-                    <span class="material-symbols-outlined text-[14px]">{{ copied() ? 'check' : 'content_copy' }}</span>
+                  <button (click)="copyFilled()"
+                    class="flex items-center gap-1.5 h-7 px-3 rounded-md text-[12px] font-semibold transition"
+                    [style]="copied() ? 'background:#16a34a; color:#fff;' : 'background:#252836; color:#9ca3af;'">
+                    <span class="material-symbols-outlined" style="font-size:13px;">{{ copied() ? 'check' : 'content_copy' }}</span>
                     {{ copied() ? 'Copied!' : 'Copy' }}
                   </button>
                 </div>
 
-                <!-- Content with highlighted variables -->
-                <div class="p-5 font-mono text-sm leading-7 min-h-[200px]">
+                <div class="p-5 font-mono text-[13px] leading-7 min-h-[200px]">
                   @for (seg of segments(); track $index) {
                     @if (seg.type === 'text') {
-                      <span class="text-slate-300 whitespace-pre-wrap">{{ seg.value }}</span>
+                      <span style="color:#c9d1d9; white-space:pre-wrap;">{{ seg.value }}</span>
                     } @else {
-                      <!-- Variable chip: filled = teal glow, empty = amber outline -->
                       @if (varValues()[seg.value]) {
-                        <span class="inline-block px-2 py-0.5 rounded-md font-semibold text-teal-300 mx-0.5"
-                              style="background:rgba(20,184,166,0.15); border:1px solid rgba(20,184,166,0.4);">
+                        <span class="inline-block px-2 py-0.5 rounded-md font-semibold mx-0.5"
+                              style="color:#5eead4; background:rgba(20,184,166,0.15); border:1px solid rgba(20,184,166,0.35);">
                           {{ varValues()[seg.value] }}
                         </span>
                       } @else {
-                        <span class="inline-block px-2 py-0.5 rounded-md font-semibold text-amber-300 mx-0.5"
-                              style="background:rgba(217,119,6,0.15); border:1px solid rgba(217,119,6,0.4);">
+                        <span class="inline-block px-2 py-0.5 rounded-md font-semibold mx-0.5"
+                              style="color:#fcd34d; background:rgba(217,119,6,0.15); border:1px solid rgba(217,119,6,0.35);">
                           {{ '{' }}{{ '{' }}{{ seg.value }}{{ '}' }}{{ '}' }}
                         </span>
                       }
@@ -181,121 +231,97 @@ function parseContent(content: string): Segment[] {
                 </div>
               </div>
 
-              <!-- Variable fill-in panel -->
+              <!-- Variable fill panel -->
               @if (prompt()!.variables.length > 0) {
-                <div class="bg-white rounded-xl border border-slate-200 p-5">
+                <div class="panel">
                   <div class="flex items-center justify-between mb-4">
-                    <h3 class="font-display font-semibold text-slate-900 flex items-center gap-2">
-                      <span class="material-symbols-outlined text-amber-500 text-[20px]">edit_note</span>
+                    <h3 class="font-display font-semibold text-[15px] flex items-center gap-2" style="color:var(--text);">
+                      <span class="material-symbols-outlined text-[19px]" style="color:#d97706;">edit_note</span>
                       Fill in Variables
-                      <span class="text-xs font-normal text-slate-400">({{ filledCount() }}/{{ prompt()!.variables.length }} filled)</span>
+                      <span class="text-[12px] font-normal" style="color:var(--text-muted);">
+                        ({{ filledCount() }}/{{ prompt()!.variables.length }} filled)
+                      </span>
                     </h3>
                     @if (filledCount() > 0) {
-                      <button
-                        (click)="clearVars()"
-                        class="text-xs text-slate-400 hover:text-slate-600 transition"
-                      >
+                      <button (click)="clearVars()" class="text-[12px] transition"
+                        style="color:var(--text-muted);" (mouseenter)="$any($event.target).style.color='var(--text)'"
+                        (mouseleave)="$any($event.target).style.color='var(--text-muted)'">
                         Clear all
                       </button>
                     }
                   </div>
-
                   <div class="grid grid-cols-2 gap-3">
                     @for (v of prompt()!.variables; track v) {
                       <div>
-                        <label class="block mb-3">
-                          <span class="inline-block font-mono text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded border border-amber-200">
-                            {{ '{' }}{{ '{' }}{{ v }}{{ '}' }}{{ '}' }}
-                          </span>
+                        <label class="inline-block font-mono text-[11px] font-semibold px-2.5 py-1 rounded mb-2"
+                               style="background:rgba(217,119,6,0.1); color:#b45309; border:1px solid rgba(217,119,6,0.25);">
+                          {{ '{' }}{{ '{' }}{{ v }}{{ '}' }}{{ '}' }}
                         </label>
-                        <input
-                          type="text"
-                          [placeholder]="'Enter ' + v + '...'"
+                        <input type="text" [placeholder]="'Enter ' + v + '…'" class="var-input"
                           [value]="varValues()[v] ?? ''"
-                          (input)="setVar(v, $any($event.target).value)"
-                          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
-                        />
+                          (input)="setVar(v, $any($event.target).value)"/>
                       </div>
                     }
                   </div>
-
-                  <!-- Copy filled prompt CTA -->
-                  <div class="mt-5 pt-4 border-t border-slate-100 flex items-center gap-3">
-                    <button
-                      (click)="copyFilled()"
-                      class="flex items-center gap-2 h-10 px-6 text-white text-sm font-semibold rounded-lg transition hover:opacity-90"
-                      [style]="copied() ? 'background:#16a34a;' : 'background:#C8102E;'"
-                    >
-                      <span class="material-symbols-outlined text-[18px]">{{ copied() ? 'check_circle' : 'content_copy' }}</span>
+                  <div class="flex items-center gap-3 mt-5 pt-4" style="border-top:1px solid var(--border);">
+                    <button (click)="copyFilled()" class="copy-btn" [class.success]="copied()">
+                      <span class="material-symbols-outlined" style="font-size:17px;">{{ copied() ? 'check_circle' : 'content_copy' }}</span>
                       {{ copied() ? 'Copied to clipboard!' : 'Copy Filled Prompt' }}
                     </button>
                     @if (filledCount() < prompt()!.variables.length) {
-                      <p class="text-xs text-slate-400">
-                        {{ prompt()!.variables.length - filledCount() }} variable(s) still empty, they'll be copied as
-                        <span class="font-mono text-amber-600">{{ '{' }}{{ '{' }}name{{ '}' }}{{ '}' }}</span>
+                      <p class="text-[12px]" style="color:var(--text-muted);">
+                        {{ prompt()!.variables.length - filledCount() }} still empty — copied as
+                        <span class="font-mono" style="color:#b45309;">{{ '{' }}{{ '{' }}name{{ '}' }}{{ '}' }}</span>
                       </p>
                     }
                   </div>
                 </div>
               } @else {
-                <!-- No variables :just show copy button -->
                 <div class="flex justify-end">
-                  <button
-                    (click)="copyFilled()"
-                    class="flex items-center gap-2 h-10 px-6 text-white text-sm font-semibold rounded-lg transition hover:opacity-90"
-                    [style]="copied() ? 'background:#16a34a;' : 'background:#C8102E;'"
-                  >
-                    <span class="material-symbols-outlined text-[18px]">{{ copied() ? 'check_circle' : 'content_copy' }}</span>
+                  <button (click)="copyFilled()" class="copy-btn" [class.success]="copied()">
+                    <span class="material-symbols-outlined" style="font-size:17px;">{{ copied() ? 'check_circle' : 'content_copy' }}</span>
                     {{ copied() ? 'Copied!' : 'Copy Prompt' }}
                   </button>
                 </div>
               }
             </div>
 
-            <!-- RIGHT: Metadata panel -->
+            <!-- RIGHT -->
             <div class="space-y-4">
 
-              <!-- Quick stats card -->
-              <div class="bg-white rounded-xl border border-slate-200 p-5">
-                <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-4">Stats</h3>
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                  <div class="text-center p-3 bg-slate-50 rounded-lg">
-                    <p class="font-display font-bold text-2xl text-slate-900">{{ prompt()!.vote_count }}</p>
-                    <p class="text-xs text-slate-400 mt-0.5">Upvotes</p>
+              <!-- Stats -->
+              <div class="panel">
+                <p class="text-[10px] font-semibold uppercase tracking-widest mb-4" style="color:var(--text-muted);">Stats</p>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                  <div class="stat-box">
+                    <p class="font-display font-bold text-[24px]" style="color:var(--text);">{{ prompt()!.vote_count }}</p>
+                    <p class="text-[11px] mt-0.5" style="color:var(--text-muted);">Upvotes</p>
                   </div>
-                  <div class="text-center p-3 bg-slate-50 rounded-lg">
-                    <p class="font-display font-bold text-2xl text-slate-900">{{ prompt()!.copy_count }}</p>
-                    <p class="text-xs text-slate-400 mt-0.5">Copies</p>
+                  <div class="stat-box">
+                    <p class="font-display font-bold text-[24px]" style="color:var(--text);">{{ prompt()!.copy_count }}</p>
+                    <p class="text-[11px] mt-0.5" style="color:var(--text-muted);">Copies</p>
                   </div>
                 </div>
-                <button
-                  (click)="doVote()"
-                  class="w-full h-9 flex items-center justify-center gap-1.5 rounded-lg text-sm font-semibold border-2 transition"
-                  [class]="prompt()!.has_voted
-                    ? 'border-brand text-brand bg-red-50'
-                    : 'border-slate-200 text-slate-600 hover:border-brand hover:text-brand'"
-                >
-                  <span class="material-symbols-outlined text-[18px]">arrow_upward</span>
+                <button (click)="doVote()" class="vote-action" [class.voted]="prompt()!.has_voted">
+                  <span class="material-symbols-outlined" style="font-size:17px;">arrow_upward</span>
                   {{ prompt()!.has_voted ? 'Voted' : 'Upvote' }}
                 </button>
               </div>
 
               <!-- Variables summary -->
               @if (prompt()!.variables.length > 0) {
-                <div class="bg-white rounded-xl border border-slate-200 p-5">
-                  <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">
+                <div class="panel">
+                  <p class="text-[10px] font-semibold uppercase tracking-widest mb-3" style="color:var(--text-muted);">
                     Variables ({{ prompt()!.variables.length }})
-                  </h3>
+                  </p>
                   <div class="flex flex-wrap gap-2">
                     @for (v of prompt()!.variables; track v) {
-                      <span
-                        class="px-2 py-0.5 text-xs font-mono rounded border transition"
-                        [class]="varValues()[v]
-                          ? 'bg-teal-50 text-teal-700 border-teal-200'
-                          : 'bg-amber-50 text-amber-700 border-amber-200'"
-                      >
+                      <span class="px-2 py-0.5 text-[11px] font-mono rounded border"
+                            [style]="varValues()[v]
+                              ? 'background:rgba(20,184,166,0.08); color:#0d9488; border-color:rgba(20,184,166,0.25);'
+                              : 'background:rgba(217,119,6,0.08); color:#b45309; border-color:rgba(217,119,6,0.25);'">
                         {{ '{' }}{{ '{' }}{{ v }}{{ '}' }}{{ '}' }}
-                        @if (varValues()[v]) { <span class="text-teal-400 ml-1">✓</span> }
+                        @if (varValues()[v]) { <span style="color:#0d9488; margin-left:3px;">✓</span> }
                       </span>
                     }
                   </div>
@@ -304,17 +330,17 @@ function parseContent(content: string): Segment[] {
 
               <!-- Works With -->
               @if (prompt()!.compatible_tools.length) {
-                <div class="bg-white rounded-xl border border-slate-200 p-5">
-                  <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">Works With</h3>
-                  <div class="space-y-2">
+                <div class="panel">
+                  <p class="text-[10px] font-semibold uppercase tracking-widest mb-3" style="color:var(--text-muted);">Works With</p>
+                  <div class="space-y-3">
                     @for (tool of prompt()!.compatible_tools; track tool.id) {
                       <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
-                          <span class="material-symbols-outlined text-slate-400" style="font-size:16px;">smart_toy</span>
-                          <div class="leading-none">
-                            <p class="text-sm font-medium text-slate-800">{{ tool.name }}</p>
+                          <span class="material-symbols-outlined" style="font-size:15px; color:var(--text-muted);">smart_toy</span>
+                          <div>
+                            <p class="text-[13px] font-medium" style="color:var(--text);">{{ tool.name }}</p>
                             @if (tool.provider) {
-                              <p class="text-[11px] text-slate-400">{{ tool.provider }}</p>
+                              <p class="text-[11px]" style="color:var(--text-muted);">{{ tool.provider }}</p>
                             }
                           </div>
                         </div>
@@ -329,40 +355,36 @@ function parseContent(content: string): Segment[] {
               }
 
               <!-- Metadata -->
-              <div class="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
-                <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-1">Metadata</h3>
-
+              <div class="panel">
+                <p class="text-[10px] font-semibold uppercase tracking-widest mb-3" style="color:var(--text-muted);">Metadata</p>
                 @if (prompt()!.category) {
-                  <div class="flex items-center justify-between text-sm">
-                    <span class="text-slate-500">Category</span>
-                    <span class="font-medium text-slate-800">{{ prompt()!.category!.name }}</span>
+                  <div class="meta-row">
+                    <span style="color:var(--text-muted);">Category</span>
+                    <span class="font-medium" style="color:var(--text);">{{ prompt()!.category!.name }}</span>
                   </div>
                 }
-
                 @if (prompt()!.tags.length > 0) {
-                  <div class="flex items-start justify-between text-sm gap-2">
-                    <span class="text-slate-500 flex-shrink-0">Tags</span>
+                  <div class="meta-row">
+                    <span style="color:var(--text-muted);">Tags</span>
                     <div class="flex flex-wrap gap-1 justify-end">
                       @for (tag of prompt()!.tags; track tag.id) {
-                        <span class="px-1.5 py-0.5 text-xs bg-slate-100 text-slate-600 rounded-full">#{{ tag.name }}</span>
+                        <span class="px-1.5 py-0.5 text-[11px] rounded-full"
+                              style="background:var(--surface2); color:var(--text-muted);">#{{ tag.name }}</span>
                       }
                     </div>
                   </div>
                 }
-
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-slate-500">Visibility</span>
-                  <span class="font-medium text-slate-800 capitalize">{{ prompt()!.visibility }}</span>
+                <div class="meta-row">
+                  <span style="color:var(--text-muted);">Visibility</span>
+                  <span class="font-medium capitalize" style="color:var(--text);">{{ prompt()!.visibility }}</span>
                 </div>
-
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-slate-500">Created</span>
-                  <span class="font-medium text-slate-800">{{ prompt()!.created_at | date:'MMM d, y' }}</span>
+                <div class="meta-row">
+                  <span style="color:var(--text-muted);">Created</span>
+                  <span class="font-medium" style="color:var(--text);">{{ prompt()!.created_at | date:'MMM d, y' }}</span>
                 </div>
-
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-slate-500">Updated</span>
-                  <span class="font-medium text-slate-800">{{ prompt()!.updated_at | date:'MMM d, y' }}</span>
+                <div class="meta-row">
+                  <span style="color:var(--text-muted);">Updated</span>
+                  <span class="font-medium" style="color:var(--text);">{{ prompt()!.updated_at | date:'MMM d, y' }}</span>
                 </div>
               </div>
 
@@ -372,7 +394,7 @@ function parseContent(content: string): Segment[] {
       }
     </main>
 
-    @if (showAuth) { <app-auth-modal (close)="showAuth = false" /> }
+    @if (showAuth)      { <app-auth-modal (close)="showAuth = false" /> }
     @if (showAddPrompt) { <app-add-prompt-modal (close)="showAddPrompt = false" (saved)="showAddPrompt = false" /> }
   `,
 })
@@ -387,19 +409,10 @@ export class PromptDetailComponent implements OnInit {
   copied = signal(false);
   showAuth = false;
   showAddPrompt = false;
-
-  // Variable fill-in state
   varValues = signal<Record<string, string>>({});
 
-  // Parse content into text/variable segments — recomputed when prompt loads
-  segments = computed<Segment[]>(() => {
-    const content = this.prompt()?.content ?? '';
-    return parseContent(content);
-  });
-
-  filledCount = computed(() =>
-    Object.values(this.varValues()).filter(v => v.trim() !== '').length
-  );
+  segments = computed<Segment[]>(() => parseContent(this.prompt()?.content ?? ''));
+  filledCount = computed(() => Object.values(this.varValues()).filter(v => v.trim() !== '').length);
 
   ngOnInit() {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -409,10 +422,7 @@ export class PromptDetailComponent implements OnInit {
     });
   }
 
-  setVar(name: string, value: string) {
-    this.varValues.update(m => ({ ...m, [name]: value }));
-  }
-
+  setVar(name: string, value: string) { this.varValues.update(m => ({ ...m, [name]: value })); }
   clearVars() { this.varValues.set({}); }
 
   copyFilled() {
@@ -433,11 +443,6 @@ export class PromptDetailComponent implements OnInit {
     });
   }
 
-  catColor() {
-    const color = this.prompt()?.category?.color ?? 'blue';
-    return CAT_COLORS[color] ?? 'bg-slate-100 text-slate-700';
-  }
-
   authorInitials() {
     const a = this.prompt()?.author;
     if (!a) return '?';
@@ -453,17 +458,15 @@ export class PromptDetailComponent implements OnInit {
 
   toolPricingClass(pricing: 'free' | 'freemium' | 'paid'): string {
     switch (pricing) {
-      case 'free': return 'bg-emerald-100 text-emerald-700';
+      case 'free':     return 'bg-emerald-100 text-emerald-700';
       case 'freemium': return 'bg-blue-100 text-blue-700';
-      case 'paid': return 'bg-slate-100 text-slate-600';
+      case 'paid':     return 'bg-slate-100 text-slate-600';
     }
   }
 
   pricingLabel(pricing: 'free' | 'freemium' | 'paid'): string {
     switch (pricing) {
-      case 'free': return 'Free';
-      case 'freemium': return 'Free tier';
-      case 'paid': return 'Paid';
+      case 'free': return 'Free'; case 'freemium': return 'Free tier'; case 'paid': return 'Paid';
     }
   }
 }

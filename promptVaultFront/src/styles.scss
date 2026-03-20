@@ -1,1 +1,23 @@
-/* You can add global styles to this file, and also import other style files */
+/* Theme toggle helper — applied by ThemeService to <html> */
+html { color-scheme: light; }
+html.dark { color-scheme: dark; }
+
+/* Scrollbar hide utility */
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+/* Variable pill */
+.var-pill {
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 5px;
+  background: var(--accent-bg);
+  color: var(--accent-txt);
+  border: 1px solid var(--border-mid);
+}
+
+/* Smooth transitions for themed elements */
+nav, aside, main, .card, .modal {
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}

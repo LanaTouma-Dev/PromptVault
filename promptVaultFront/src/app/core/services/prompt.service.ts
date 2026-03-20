@@ -10,12 +10,23 @@ export class PromptService {
 
   getPrompts(filters: PromptFilters = {}) {
     let params = new HttpParams();
-    if (filters.search) params = params.set('search', filters.search);
-    if (filters.category && filters.category !== 'all') params = params.set('category', filters.category);
-    if (filters.tag) params = params.set('tag', filters.tag);
-    if (filters.ordering) params = params.set('ordering', filters.ordering);
-    if (filters.hot) params = params.set('hot', 'true');
-    if (filters.page) params = params.set('page', filters.page.toString());
+    if (filters.search)                        params = params.set('search',   filters.search);
+    if (filters.category && filters.category !== 'all')
+                                               params = params.set('category', filters.category);
+    if (filters.tag)                           params = params.set('tag',      filters.tag);
+    if (filters.ordering)                      params = params.set('ordering', filters.ordering);
+    if (filters.hot)                           params = params.set('hot',      'true');
+    if (filters.page)                          params = params.set('page',     filters.page.toString());
+    return this.http.get<PaginatedResponse<Prompt>>(`${API}/prompts/`, { params });
+  }
+
+  /** Fetch only the current user's own prompts (both shared + private). */
+  getMyPrompts() {
+    // The backend returns private prompts only for the authenticated author,
+    // so fetching with a large page size and no visibility filter gives us everything.
+    const params = new HttpParams()
+      .set('ordering', '-created_at')
+      .set('page_size', '200');
     return this.http.get<PaginatedResponse<Prompt>>(`${API}/prompts/`, { params });
   }
 
@@ -23,11 +34,11 @@ export class PromptService {
     return this.http.get<Prompt>(`${API}/prompts/${id}/`);
   }
 
-  createPrompt(data: Partial<Prompt>) {
+  createPrompt(data: Record<string, unknown>) {
     return this.http.post<Prompt>(`${API}/prompts/`, data);
   }
 
-  updatePrompt(id: number, data: Partial<Prompt>) {
+  updatePrompt(id: number, data: Partial<Prompt> | Record<string, unknown>) {
     return this.http.patch<Prompt>(`${API}/prompts/${id}/`, data);
   }
 

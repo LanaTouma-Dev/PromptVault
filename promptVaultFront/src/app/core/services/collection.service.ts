@@ -8,6 +8,11 @@ const API = 'http://localhost:8000/api';
 export class CollectionService {
   constructor(private http: HttpClient) {}
 
+  /** Fetch a single collection by id */
+  getCollection(id: number) {
+    return this.http.get<Collection>(`${API}/collections/${id}/`);
+  }
+
   /** List all collections owned by the current user */
   getMyCollections() {
     return this.http.get<{ count: number; results: Collection[] }>(`${API}/collections/`);

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>PromptVault</title>
+  <title>PromptOverflow</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -13,12 +13,15 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           colors: {
-            brand:   '#C8102E',
-            primary: '#3B82F6',
-            surface: '#F8FAFC',
+            accent: '#6054e8',
+            'accent-hover': '#7c6ef7',
+            hot: '#e05a28',
+            surface: '#f5f4fb',
+            'surface-dark': '#18181f',
           },
           fontFamily: {
             display: ['"Plus Jakarta Sans"', 'sans-serif'],
@@ -30,9 +33,80 @@
   </script>
   <style>
     .ms { font-family: 'Material Symbols Outlined'; font-variation-settings: 'FILL' 0, 'wght' 400; }
+
+    /* ── Light tokens ── */
+    :root {
+      --bg:          #f5f4fb;
+      --surface:     #ffffff;
+      --surface2:    #f0eff8;
+      --border:      rgba(96, 84, 232, 0.10);
+      --border-mid:  rgba(96, 84, 232, 0.22);
+      --accent:      #6054e8;
+      --accent-bg:   rgba(96, 84, 232, 0.08);
+      --accent-txt:  #6054e8;
+      --hot:         #e05a28;
+      --hot-bg:      rgba(224, 90, 40, 0.08);
+      --text:        #1a1830;
+      --text-muted:  #7470a0;
+      --tag-bg:      rgba(96, 84, 232, 0.08);
+      --tag-txt:     #6054e8;
+      --navbar-bg:   rgba(245, 244, 251, 0.88);
+
+      /* ── Colourful param / tag palette ── */
+      --param-0-bg:  rgba(96,  84, 232, 0.09); --param-0-txt: #5046d4; --param-0-bd: rgba(96,84,232,0.22);
+      --param-1-bg:  rgba(16, 155, 117, 0.09); --param-1-txt: #0d7a5e; --param-1-bd: rgba(16,155,117,0.25);
+      --param-2-bg:  rgba(217, 100,  40, 0.09);--param-2-txt: #b45309; --param-2-bd: rgba(217,100,40,0.25);
+      --param-3-bg:  rgba(219,  39, 119, 0.09);--param-3-txt: #be185d; --param-3-bd: rgba(219,39,119,0.25);
+      --param-4-bg:  rgba(37,  99, 235, 0.09); --param-4-txt: #1d4ed8; --param-4-bd: rgba(37,99,235,0.25);
+
+      --tag-0-bg: rgba(96,84,232,0.07);  --tag-0-txt: #5046d4;
+      --tag-1-bg: rgba(16,155,117,0.07); --tag-1-txt: #0d7a5e;
+      --tag-2-bg: rgba(217,100,40,0.07); --tag-2-txt: #b45309;
+      --tag-3-bg: rgba(219,39,119,0.07); --tag-3-txt: #be185d;
+      --tag-4-bg: rgba(37,99,235,0.07);  --tag-4-txt: #1d4ed8;
+    }
+
+    /* ── Dark tokens ── */
+    .dark {
+      --bg:          #0f0f13;
+      --surface:     #18181f;
+      --surface2:    #22222c;
+      --border:      rgba(255, 255, 255, 0.08);
+      --border-mid:  rgba(255, 255, 255, 0.15);
+      --accent:      #7c6ef7;
+      --accent-bg:   rgba(124, 110, 247, 0.14);
+      --accent-txt:  #a89cf9;
+      --hot:         #f06a3a;
+      --hot-bg:      rgba(240, 106, 58, 0.13);
+      --text:        #e8e7f0;
+      --text-muted:  #8b89a0;
+      --tag-bg:      rgba(124, 110, 247, 0.12);
+      --tag-txt:     #a89cf9;
+      --navbar-bg:   rgba(15, 15, 19, 0.88);
+
+      --param-0-bg:  rgba(124,110,247,0.14); --param-0-txt: #a89cf9; --param-0-bd: rgba(124,110,247,0.3);
+      --param-1-bg:  rgba(20,184,166,0.12);  --param-1-txt: #5eead4; --param-1-bd: rgba(20,184,166,0.28);
+      --param-2-bg:  rgba(251,146,60,0.12);  --param-2-txt: #fdba74; --param-2-bd: rgba(251,146,60,0.28);
+      --param-3-bg:  rgba(236,72,153,0.12);  --param-3-txt: #f9a8d4; --param-3-bd: rgba(236,72,153,0.28);
+      --param-4-bg:  rgba(96,165,250,0.12);  --param-4-txt: #93c5fd; --param-4-bd: rgba(96,165,250,0.28);
+
+      --tag-0-bg: rgba(124,110,247,0.12); --tag-0-txt: #a89cf9;
+      --tag-1-bg: rgba(20,184,166,0.10);  --tag-1-txt: #5eead4;
+      --tag-2-bg: rgba(251,146,60,0.10);  --tag-2-txt: #fdba74;
+      --tag-3-bg: rgba(236,72,153,0.10);  --tag-3-txt: #f9a8d4;
+      --tag-4-bg: rgba(96,165,250,0.10);  --tag-4-txt: #93c5fd;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color 0.2s, color 0.2s;
+    }
   </style>
 </head>
-<body class="bg-surface font-body text-slate-800 antialiased">
+<body>
   <app-root></app-root>
 </body>
 </html>
