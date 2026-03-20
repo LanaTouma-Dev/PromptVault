@@ -35,7 +35,7 @@ export interface Prompt {
   id: number;
   title: string;
   description: string;
-  content?: string;
+  content: string;           // always present — was incorrectly optional
   variables: string[];
   author: Author;
   category: Category | null;

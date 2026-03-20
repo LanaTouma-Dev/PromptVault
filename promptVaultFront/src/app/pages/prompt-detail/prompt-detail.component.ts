@@ -9,6 +9,7 @@ import { NavbarComponent } from '../../components/navbar/navbar.component';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { AuthModalComponent } from '../../components/auth-modal/auth-modal.component';
 import { AddPromptModalComponent } from '../../components/add-prompt-modal/add-prompt-modal.component';
+import { SaveToCollectionModalComponent } from '../../components/save-to-collection-modal/save-to-collection-modal.component';
 
 interface Segment { type: 'text' | 'variable'; value: string; }
 
@@ -28,7 +29,8 @@ function parseContent(content: string): Segment[] {
 @Component({
   selector: 'app-prompt-detail',
   standalone: true,
-  imports: [CommonModule, DatePipe, NavbarComponent, SidebarComponent, AuthModalComponent, AddPromptModalComponent],
+  imports: [CommonModule, DatePipe, NavbarComponent, SidebarComponent,
+            AuthModalComponent, AddPromptModalComponent, SaveToCollectionModalComponent],
   styles: [`
     main { background: var(--bg); }
 
@@ -49,27 +51,17 @@ function parseContent(content: string): Segment[] {
       border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em;
       background: var(--hot-bg); color: var(--hot);
     }
-
     .panel {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 12px; padding: 20px;
     }
-
-    .stat-box {
-      text-align: center; padding: 14px;
-      background: var(--surface2); border-radius: 9px;
-    }
-
+    .stat-box { text-align: center; padding: 14px; background: var(--surface2); border-radius: 9px; }
     .vote-action {
       width: 100%; height: 36px; display: flex; align-items: center; justify-content: center; gap: 6px;
       border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer;
-      border: 1px solid var(--border); background: transparent; color: var(--text-muted);
-      transition: all 0.12s;
+      border: 1px solid var(--border); background: transparent; color: var(--text-muted); transition: all 0.12s;
     }
-    .vote-action:hover, .vote-action.voted {
-      border-color: var(--accent); color: var(--accent-txt); background: var(--accent-bg);
-    }
-
+    .vote-action:hover, .vote-action.voted { border-color: var(--accent); color: var(--accent-txt); background: var(--accent-bg); }
     .var-input {
       width: 100%; padding: 9px 12px; font-size: 13px; border-radius: 9px;
       background: var(--surface2); border: 1px solid var(--border);
@@ -77,7 +69,6 @@ function parseContent(content: string): Segment[] {
     }
     .var-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
     .var-input::placeholder { color: var(--text-muted); opacity: 0.5; }
-
     .copy-btn {
       display: inline-flex; align-items: center; gap: 8px;
       height: 40px; padding: 0 22px; border: none; border-radius: 10px;
@@ -86,18 +77,12 @@ function parseContent(content: string): Segment[] {
     }
     .copy-btn:hover { opacity: 0.88; }
     .copy-btn.success { background: #16a34a; }
-
     .meta-row {
       display: flex; align-items: center; justify-content: space-between;
-      font-size: 13px; padding: 6px 0;
-      border-bottom: 1px solid var(--border);
+      font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--border);
     }
     .meta-row:last-child { border-bottom: none; }
-
-    .skeleton-line {
-      border-radius: 6px; background: var(--surface2);
-      animation: pulse 1.5s ease-in-out infinite;
-    }
+    .skeleton-line { border-radius: 6px; background: var(--surface2); animation: pulse 1.5s ease-in-out infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
   `],
   template: `
@@ -147,26 +132,18 @@ function parseContent(content: string): Segment[] {
               @if (prompt()!.category) {
                 <span class="cat-badge">{{ prompt()!.category!.name }}</span>
               }
-              @if (prompt()!.is_hot) {
-                <span class="hot-badge">🔥 Hot</span>
-              }
+              @if (prompt()!.is_hot) { <span class="hot-badge">🔥 Hot</span> }
               <span class="px-2.5 py-0.5 text-[11px] font-semibold rounded-full uppercase tracking-wide"
-                    style="background:var(--surface2); color:var(--text-muted);">
-                {{ prompt()!.visibility }}
-              </span>
+                    style="background:var(--surface2); color:var(--text-muted);">{{ prompt()!.visibility }}</span>
             </div>
-
             <h1 class="font-display font-extrabold text-[28px] mb-2 leading-tight" style="color:var(--text);">
               {{ prompt()!.title }}
             </h1>
             <p class="text-[15px] leading-relaxed max-w-2xl" style="color:var(--text-muted);">{{ prompt()!.description }}</p>
-
             <div class="flex items-center gap-5 mt-4">
               <div class="flex items-center gap-2">
                 <div class="h-8 w-8 rounded-full flex items-center justify-center text-[12px] font-bold text-white"
-                     style="background:var(--accent);">
-                  {{ authorInitials() }}
-                </div>
+                     style="background:var(--accent);">{{ authorInitials() }}</div>
                 <div class="leading-none">
                   <p class="text-[13px] font-medium" style="color:var(--text);">{{ authorName() }}</p>
                   <p class="text-[11px]" style="color:var(--text-muted);">{{ prompt()!.updated_at | date:'MMM d, y' }}</p>
@@ -182,6 +159,12 @@ function parseContent(content: string): Segment[] {
                 <span class="material-symbols-outlined" style="font-size:17px;">content_copy</span>
                 {{ prompt()!.copy_count }} copies
               </span>
+              <button (click)="showSaveToCollection = true"
+                class="flex items-center gap-1.5 text-[13px] font-medium transition"
+                style="color:var(--text-muted);">
+                <span class="material-symbols-outlined" style="font-size:17px;">bookmark_add</span>
+                Save
+              </button>
             </div>
           </div>
 
@@ -191,7 +174,7 @@ function parseContent(content: string): Segment[] {
             <!-- LEFT -->
             <div class="col-span-2 space-y-4">
 
-              <!-- Code editor block (intentionally dark in both modes — it's a code surface) -->
+              <!-- Dark code editor -->
               <div class="rounded-xl overflow-hidden" style="background:#0f1117; border:1px solid #2a2d3a;">
                 <div class="flex items-center justify-between px-4 py-2.5" style="background:#1a1d27; border-bottom:1px solid #2a2d3a;">
                   <div class="flex items-center gap-2">
@@ -209,7 +192,6 @@ function parseContent(content: string): Segment[] {
                     {{ copied() ? 'Copied!' : 'Copy' }}
                   </button>
                 </div>
-
                 <div class="p-5 font-mono text-[13px] leading-7 min-h-[200px]">
                   @for (seg of segments(); track $index) {
                     @if (seg.type === 'text') {
@@ -243,11 +225,7 @@ function parseContent(content: string): Segment[] {
                       </span>
                     </h3>
                     @if (filledCount() > 0) {
-                      <button (click)="clearVars()" class="text-[12px] transition"
-                        style="color:var(--text-muted);" (mouseenter)="$any($event.target).style.color='var(--text)'"
-                        (mouseleave)="$any($event.target).style.color='var(--text-muted)'">
-                        Clear all
-                      </button>
+                      <button (click)="clearVars()" class="text-[12px]" style="color:var(--text-muted);">Clear all</button>
                     }
                   </div>
                   <div class="grid grid-cols-2 gap-3">
@@ -270,8 +248,7 @@ function parseContent(content: string): Segment[] {
                     </button>
                     @if (filledCount() < prompt()!.variables.length) {
                       <p class="text-[12px]" style="color:var(--text-muted);">
-                        {{ prompt()!.variables.length - filledCount() }} still empty — copied as
-                        <span class="font-mono" style="color:#b45309;">{{ '{' }}{{ '{' }}name{{ '}' }}{{ '}' }}</span>
+                        {{ prompt()!.variables.length - filledCount() }} still empty
                       </p>
                     }
                   </div>
@@ -288,8 +265,6 @@ function parseContent(content: string): Segment[] {
 
             <!-- RIGHT -->
             <div class="space-y-4">
-
-              <!-- Stats -->
               <div class="panel">
                 <p class="text-[10px] font-semibold uppercase tracking-widest mb-4" style="color:var(--text-muted);">Stats</p>
                 <div class="grid grid-cols-2 gap-3 mb-4">
@@ -308,7 +283,6 @@ function parseContent(content: string): Segment[] {
                 </button>
               </div>
 
-              <!-- Variables summary -->
               @if (prompt()!.variables.length > 0) {
                 <div class="panel">
                   <p class="text-[10px] font-semibold uppercase tracking-widest mb-3" style="color:var(--text-muted);">
@@ -328,7 +302,6 @@ function parseContent(content: string): Segment[] {
                 </div>
               }
 
-              <!-- Works With -->
               @if (prompt()!.compatible_tools.length) {
                 <div class="panel">
                   <p class="text-[10px] font-semibold uppercase tracking-widest mb-3" style="color:var(--text-muted);">Works With</p>
@@ -354,7 +327,6 @@ function parseContent(content: string): Segment[] {
                 </div>
               }
 
-              <!-- Metadata -->
               <div class="panel">
                 <p class="text-[10px] font-semibold uppercase tracking-widest mb-3" style="color:var(--text-muted);">Metadata</p>
                 @if (prompt()!.category) {
@@ -387,7 +359,6 @@ function parseContent(content: string): Segment[] {
                   <span class="font-medium" style="color:var(--text);">{{ prompt()!.updated_at | date:'MMM d, y' }}</span>
                 </div>
               </div>
-
             </div>
           </div>
         </div>
@@ -396,22 +367,27 @@ function parseContent(content: string): Segment[] {
 
     @if (showAuth)      { <app-auth-modal (close)="showAuth = false" /> }
     @if (showAddPrompt) { <app-add-prompt-modal (close)="showAddPrompt = false" (saved)="showAddPrompt = false" /> }
+    @if (showSaveToCollection && prompt()) {
+      <app-save-to-collection-modal [prompt]="prompt()!" (close)="showSaveToCollection = false" />
+    }
   `,
 })
 export class PromptDetailComponent implements OnInit {
   router = inject(Router);
-  private route = inject(ActivatedRoute);
+  private route         = inject(ActivatedRoute);
   private promptService = inject(PromptService);
-  private auth = inject(AuthService);
+  private auth          = inject(AuthService);
 
-  prompt = signal<Prompt | null>(null);
-  loading = signal(true);
-  copied = signal(false);
-  showAuth = false;
-  showAddPrompt = false;
-  varValues = signal<Record<string, string>>({});
+  prompt       = signal<Prompt | null>(null);
+  loading      = signal(true);
+  copied       = signal(false);
 
-  segments = computed<Segment[]>(() => parseContent(this.prompt()?.content ?? ''));
+  showAuth             = false;
+  showAddPrompt        = false;
+  showSaveToCollection = false;
+
+  varValues   = signal<Record<string, string>>({});
+  segments    = computed<Segment[]>(() => parseContent(this.prompt()?.content ?? ''));
   filledCount = computed(() => Object.values(this.varValues()).filter(v => v.trim() !== '').length);
 
   ngOnInit() {
@@ -427,8 +403,8 @@ export class PromptDetailComponent implements OnInit {
 
   copyFilled() {
     const content = this.prompt()?.content ?? '';
-    const vals = this.varValues();
-    const filled = content.replace(/\{\{(\w+)\}\}/g, (_, name) => vals[name] ?? `{{${name}}}`);
+    const vals    = this.varValues();
+    const filled  = content.replace(/\{\{(\w+)\}\}/g, (_, name) => vals[name] ?? `{{${name}}}`);
     navigator.clipboard.writeText(filled).then(() => {
       this.promptService.trackCopy(this.prompt()!.id).subscribe();
       this.copied.set(true);
@@ -449,7 +425,6 @@ export class PromptDetailComponent implements OnInit {
     if (a.first_name) return (a.first_name[0] + (a.last_name?.[0] ?? '')).toUpperCase();
     return a.username[0].toUpperCase();
   }
-
   authorName() {
     const a = this.prompt()?.author;
     if (!a) return '';
@@ -463,7 +438,6 @@ export class PromptDetailComponent implements OnInit {
       case 'paid':     return 'bg-slate-100 text-slate-600';
     }
   }
-
   pricingLabel(pricing: 'free' | 'freemium' | 'paid'): string {
     switch (pricing) {
       case 'free': return 'Free'; case 'freemium': return 'Free tier'; case 'paid': return 'Paid';

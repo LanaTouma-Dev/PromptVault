@@ -1,4 +1,4 @@
-import { Component, input, output, OnInit, inject, signal, effect } from '@angular/core';
+import { Component, input, output, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Category, Collection, Tag } from '../../models/prompt.model';
@@ -11,124 +11,108 @@ import { AuthService } from '../../core/services/auth.service';
   selector: 'app-sidebar',
   standalone: true,
   imports: [CommonModule, RouterModule],
+  styles: [`
+    :host ::ng-deep a.active-nav {
+      background: var(--accent-bg) !important;
+      color: var(--accent-txt) !important;
+    }
+    .nav-btn {
+      width: 100%; display: flex; align-items: center; gap: 10px;
+      padding: 7px 10px; border-radius: 8px; border: none;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      background: transparent; color: var(--text-muted);
+      transition: background 0.12s, color 0.12s; text-align: left;
+    }
+    .nav-btn:hover  { background: var(--surface2); color: var(--text); }
+    .nav-btn.active { background: var(--accent-bg); color: var(--accent-txt); }
+    .nav-link {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 10px; border-radius: 8px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      color: var(--text-muted); text-decoration: none;
+      transition: background 0.12s, color 0.12s;
+    }
+    .nav-link:hover { background: var(--surface2); color: var(--text); }
+    .section-label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.07em; color: var(--text-muted);
+      padding: 0 10px; margin: 16px 0 4px;
+    }
+    .section-label:first-child { margin-top: 0; }
+    .count {
+      margin-left: auto; font-size: 11px; font-weight: 400;
+      color: var(--text-muted); tabular-nums: true;
+    }
+    .tag-pill {
+      padding: 2px 9px; font-size: 11px; font-weight: 500;
+      border-radius: 20px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text-muted);
+      cursor: pointer; transition: all 0.12s;
+    }
+    .tag-pill:hover  { border-color: var(--border-mid); color: var(--text); }
+    .tag-pill.active { background: var(--accent-bg); color: var(--accent-txt); border-color: var(--border-mid); }
+  `],
   template: `
     <aside class="fixed left-0 top-[52px] w-56 flex flex-col"
-           style="height:calc(100vh - 52px); background:var(--surface);
-                  border-right:1px solid var(--border);">
+           style="height:calc(100vh - 52px); background:var(--surface); border-right:1px solid var(--border);">
 
-      <div class="flex-1 overflow-y-auto py-4 px-3">
+      <div class="flex-1 overflow-y-auto py-3 px-2">
 
-        <!-- Knowledge Base -->
-        <p class="text-[10px] font-semibold uppercase tracking-widest mb-2 px-2"
-           style="color:var(--text-muted);">Knowledge Base</p>
+        <p class="section-label">Knowledge Base</p>
 
-        <button
-          class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px]
-                 font-medium transition mb-0.5"
-          [style]="activeCategory() === 'all'
-            ? 'background:var(--accent-bg); color:var(--accent-txt);'
-            : 'background:transparent; color:var(--text-muted);'"
-          (click)="selectCategory.emit('all')"
-        >
-          <span class="material-symbols-outlined text-[19px]">apps</span>
+        <button class="nav-btn" [class.active]="activeCategory() === 'all'"
+          (click)="selectCategory.emit('all')">
+          <span class="material-symbols-outlined" style="font-size:18px;">apps</span>
           All Prompts
-          <span class="ml-auto text-[11px] tabular-nums" style="color:var(--text-muted);">
-            {{ totalCount() }}
-          </span>
+          <span class="count">{{ totalCount() }}</span>
         </button>
 
         @for (cat of categories; track cat.id) {
-          <button
-            class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px]
-                   font-medium transition mb-0.5"
-            [style]="activeCategory() === cat.slug
-              ? 'background:var(--accent-bg); color:var(--accent-txt);'
-              : 'background:transparent; color:var(--text-muted);'"
-            (click)="selectCategory.emit(cat.slug)"
-          >
-            <span class="material-symbols-outlined text-[19px]">{{ cat.icon }}</span>
+          <button class="nav-btn" [class.active]="activeCategory() === cat.slug"
+            (click)="selectCategory.emit(cat.slug)">
+            <span class="material-symbols-outlined" style="font-size:18px;">{{ cat.icon }}</span>
             {{ cat.name }}
-            <span class="ml-auto text-[11px] tabular-nums" style="color:var(--text-muted);">
-              {{ cat.prompt_count }}
-            </span>
+            <span class="count">{{ cat.prompt_count }}</span>
           </button>
         }
 
-        <!-- My Space (logged-in only) -->
         @if (auth.isLoggedIn()) {
-          <div class="mt-5">
-            <p class="text-[10px] font-semibold uppercase tracking-widest mb-2 px-2"
-               style="color:var(--text-muted);">My Space</p>
+          <p class="section-label">My Space</p>
 
-            <!-- My Private Prompts -->
-            <a routerLink="/my-prompts"
-               routerLinkActive="active-nav"
-               class="nav-link w-full flex items-center gap-2.5 px-3 py-2 rounded-lg
-                      text-[13px] font-medium transition mb-0.5"
-               style="color:var(--text-muted); text-decoration:none;"
-            >
-              <span class="material-symbols-outlined text-[19px]">lock</span>
-              My Prompts
-            </a>
+          <a routerLink="/my-prompts" routerLinkActive="active-nav" class="nav-link">
+            <span class="material-symbols-outlined" style="font-size:18px;">lock</span>
+            My Prompts
+          </a>
 
-            <!-- Collections -->
+          @if (collections().length > 0) {
+            <p class="section-label">Collections</p>
+
             @for (c of collections(); track c.id) {
-              <a
-                [routerLink]="['/collection', c.id]"
-                routerLinkActive="active-nav"
-                class="nav-link w-full flex items-center gap-2.5 px-3 py-2 rounded-lg
-                       text-[13px] font-medium transition mb-0.5"
-                style="color:var(--text-muted); text-decoration:none;"
-              >
-                <span class="text-[15px]">{{ c.icon }}</span>
-                <span class="truncate">{{ c.name }}</span>
-                <span class="ml-auto text-[11px] tabular-nums" style="color:var(--text-muted);">
-                  {{ c.prompt_count }}
-                </span>
+              <a [routerLink]="['/collection', c.id]" routerLinkActive="active-nav" class="nav-link">
+                <span class="material-symbols-outlined" style="font-size:18px;">bookmark</span>
+                <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ c.name }}</span>
+                <span class="count">{{ c.prompt_count }}</span>
               </a>
             }
-
-            @if (collections().length === 0) {
-              <p class="px-3 py-2 text-[12px] italic" style="color:var(--text-muted);">
-                No collections yet.
-              </p>
-            }
-          </div>
+          }
         }
 
-        <!-- Popular Tags -->
-        <div class="mt-5 px-1">
-          <p class="text-[10px] font-semibold uppercase tracking-widest mb-2 px-1"
-             style="color:var(--text-muted);">Popular Tags</p>
-          <div class="flex flex-wrap gap-1.5">
-            @for (tag of tags; track tag.id) {
-              <button
-                class="px-2 py-0.5 text-[11px] rounded-full transition font-medium border"
-                [style]="activeTag() === tag.slug
-                  ? 'background:var(--accent-bg); color:var(--accent-txt); border-color:var(--border-mid);'
-                  : 'background:var(--surface2); color:var(--text-muted); border-color:var(--border);'"
-                (click)="selectTag.emit(tag.slug)"
-              >
-                #{{ tag.name }}
-              </button>
-            }
-            @if (tags.length === 0) {
-              <span class="text-[12px] italic" style="color:var(--text-muted);">No tags yet.</span>
-            }
-          </div>
+        <p class="section-label">Popular Tags</p>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; padding:2px 2px 4px;">
+          @for (tag of tags; track tag.id) {
+            <button class="tag-pill" [class.active]="activeTag() === tag.slug"
+              (click)="selectTag.emit(tag.slug)">
+              #{{ tag.name }}
+            </button>
+          }
+          @if (tags.length === 0) {
+            <span style="font-size:12px; color:var(--text-muted); font-style:italic;">No tags yet.</span>
+          }
         </div>
 
       </div>
     </aside>
-
-    <!-- Active nav link styling injected globally via host -->
   `,
-  styles: [`
-    :host ::ng-deep .active-nav {
-      background: var(--accent-bg) !important;
-      color: var(--accent-txt) !important;
-    }
-  `],
 })
 export class SidebarComponent implements OnInit {
   activeCategory = input<string>('all');
@@ -137,25 +121,23 @@ export class SidebarComponent implements OnInit {
   selectCategory = output<string>();
   selectTag      = output<string>();
 
-  private categoryService  = inject(CategoryService);
+  private categoryService   = inject(CategoryService);
   private collectionService = inject(CollectionService);
-  private tagService       = inject(TagService);
+  private tagService        = inject(TagService);
   auth = inject(AuthService);
 
-  categories: Category[] = [];
-  collections = signal<Collection[]>([]);
-  tags: Tag[] = [];
+  categories:  Category[]   = [];
+  collections  = signal<Collection[]>([]);
+  tags:        Tag[]        = [];
+
+  constructor() {
+    import('@angular/core').then(({ effect }) => {});
+  }
 
   ngOnInit() {
     this.categoryService.getCategories().subscribe(res => { this.categories = res.results; });
     this.tagService.getTags().subscribe(res => { this.tags = res.results; });
-  }
-
-  constructor() {
-    effect(() => {
-      if (this.auth.isLoggedIn()) this.loadCollections();
-      else this.collections.set([]);
-    });
+    if (this.auth.isLoggedIn()) this.loadCollections();
   }
 
   loadCollections() {

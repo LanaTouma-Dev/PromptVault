@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, signal, inject, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 
@@ -8,12 +8,10 @@ import { AuthService } from '../../core/services/auth.service';
 
 import { NavbarComponent } from '../../components/navbar/navbar.component';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
-import { PromptCardComponent } from '../../components/prompt-card/prompt-card.component';
 import { AuthModalComponent } from '../../components/auth-modal/auth-modal.component';
 import { AddPromptModalComponent } from '../../components/add-prompt-modal/add-prompt-modal.component';
 import { SaveToCollectionModalComponent } from '../../components/save-to-collection-modal/save-to-collection-modal.component';
 
-/* Deterministic colour hash — same as prompt-card */
 function colorIndex(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
@@ -25,33 +23,45 @@ function colorIndex(s: string): number {
   standalone: true,
   imports: [
     CommonModule,
-    NavbarComponent, SidebarComponent, PromptCardComponent,
+    NavbarComponent, SidebarComponent,
     AuthModalComponent, AddPromptModalComponent, SaveToCollectionModalComponent,
   ],
   styles: [`
     main { background: var(--bg); }
 
-    /* ── Tab bar ── */
-    .tab-bar {
-      display: flex; gap: 4px; padding: 4px;
-      border-radius: 10px; background: var(--surface2);
-      border: 1px solid var(--border); margin-bottom: 24px;
+    /* ── Pill slider — full width ── */
+    .pill-slider {
+      position: relative;
+      display: flex;          /* was inline-flex */
+      width: 100%;            /* span full page width */
+      align-items: center;
+      padding: 3px;
+      border-radius: 30px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      margin-bottom: 24px;
     }
-    .tab-btn {
-      flex: 1; padding: 7px 16px; border-radius: 7px; border: none;
+    .pill-thumb {
+      position: absolute; top: 3px; height: calc(100% - 6px);
+      border-radius: 24px; background: var(--surface);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      transition: left 0.22s cubic-bezier(.22,1,.36,1), width 0.22s cubic-bezier(.22,1,.36,1);
+      pointer-events: none; z-index: 0;
+    }
+    .pill-btn {
+      flex: 1;                /* each button takes equal share */
+      position: relative; z-index: 1;
+      padding: 8px 0;
+      border-radius: 24px; border: none;
       font-size: 13px; font-weight: 500; cursor: pointer;
-      transition: all 0.15s; background: transparent; color: var(--text-muted);
+      background: transparent; color: var(--text-muted);
+      transition: color 0.15s; white-space: nowrap;
+      text-align: center;
     }
-    .tab-btn.active {
-      background: var(--surface); color: var(--text);
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-    }
+    .pill-btn.active { color: var(--text); font-weight: 600; }
 
     /* ── Stats ── */
-    .stats-strip {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 12px; margin-bottom: 24px;
-    }
+    .stats-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
     .stat-card {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 12px; padding: 16px 20px;
@@ -59,62 +69,51 @@ function colorIndex(s: string): number {
     }
     .stat-icon {
       width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--accent-bg);
+      display: flex; align-items: center; justify-content: center; background: var(--accent-bg);
     }
 
-    /* ── Prompt row: card + action footer ── */
-    .prompt-row { display: flex; flex-direction: column; }
-
-    /* Override the card's bottom radius so it blends into the action bar */
-    .prompt-row ::ng-deep .card {
-      border-radius: 12px 12px 0 0 !important;
-      border-bottom: none !important;
+    /* ── Inline prompt card ── */
+    .p-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px 12px 0 0; padding: 18px;
+      display: flex; flex-direction: column; gap: 10px;
+      cursor: pointer; transition: border-color 0.15s;
     }
+    .p-card:hover { border-color: var(--border-mid); }
 
-    .card-actions {
+    /* ── Owner actions row ── */
+    .owner-actions {
       display: flex; gap: 6px; padding: 8px 12px;
       background: var(--surface); border: 1px solid var(--border);
-      border-top: 1px solid var(--border); border-radius: 0 0 12px 12px;
+      border-top: none; border-radius: 0 0 12px 12px;
     }
-    .action-btn {
+    .oa-btn {
       flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
       padding: 6px 0; border-radius: 7px; font-size: 12px; font-weight: 500;
       cursor: pointer; border: 1px solid var(--border);
       background: transparent; color: var(--text-muted); transition: all 0.12s;
     }
-    .action-btn:hover         { background: var(--surface2); color: var(--text); }
-    .action-btn.danger:hover  { background: var(--hot-bg); color: var(--hot); border-color: var(--hot); }
-    .action-btn.promote:hover { background: var(--accent-bg); color: var(--accent-txt); border-color: var(--accent); }
+    .oa-btn:hover        { background: var(--surface2); color: var(--text); }
+    .oa-btn.edit:hover   { background: var(--accent-bg); color: var(--accent-txt); border-color: var(--accent); }
+    .oa-btn.vis:hover    { background: var(--accent-bg); color: var(--accent-txt); border-color: var(--accent); }
+    .oa-btn.danger:hover { background: var(--hot-bg); color: var(--hot); border-color: var(--hot); }
 
-    /* ── Visibility pill shown INSIDE the card header row ── */
+    /* ── Visibility pill ── */
     .vis-pill {
       display: inline-flex; align-items: center; gap: 3px;
       padding: 2px 8px; font-size: 10px; font-weight: 700;
       border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em;
     }
-    .vis-private { background: var(--hot-bg);    color: var(--hot); }
+    .vis-private { background: var(--hot-bg); color: var(--hot); }
     .vis-shared  { background: var(--accent-bg); color: var(--accent-txt); }
 
-    /* ── Skeleton / empty ── */
-    .skeleton-card {
-      background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px;
-    }
-    .skeleton-line {
-      border-radius: 6px; background: var(--surface2);
-      animation: pulse 1.6s ease-in-out infinite;
-    }
+    /* ── Skeletons / empty ── */
+    .skeleton-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .skeleton-line { border-radius: 6px; background: var(--surface2); animation: pulse 1.6s ease-in-out infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-    .empty-state {
-      display: flex; flex-direction: column; align-items: center;
-      justify-content: center; padding: 80px 0; text-align: center;
-    }
-    .empty-icon {
-      width: 64px; height: 64px; border-radius: 16px;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--accent-bg); margin-bottom: 16px;
-    }
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 0; text-align: center; }
+    .empty-icon { width: 64px; height: 64px; border-radius: 16px; display: flex; align-items: center; justify-content: center; background: var(--accent-bg); margin-bottom: 16px; }
   `],
   template: `
     <app-navbar
@@ -130,17 +129,14 @@ function colorIndex(s: string): number {
     <main class="ml-56 pt-[52px] min-h-screen">
       <div class="max-w-5xl mx-auto px-6 py-6">
 
-        <!-- Page header -->
+        <!-- Header -->
         <div class="flex items-center justify-between mb-6">
           <div>
             <h1 class="font-display font-bold text-[22px]" style="color:var(--text);">My Prompts</h1>
-            <p class="text-[13px] mt-0.5" style="color:var(--text-muted);">
-              All prompts you've created — private and shared
-            </p>
+            <p class="text-[13px] mt-0.5" style="color:var(--text-muted);">All prompts you've created — private and shared</p>
           </div>
           <button (click)="showAddPrompt = true"
-            class="flex items-center gap-1.5 h-9 px-4 text-white text-[13px] font-semibold
-                   rounded-lg transition hover:opacity-85"
+            class="flex items-center gap-1.5 h-9 px-4 text-white text-[13px] font-semibold rounded-lg transition hover:opacity-85"
             style="background:var(--accent);">
             <span class="material-symbols-outlined text-[17px]">add</span>
             New Prompt
@@ -156,7 +152,7 @@ function colorIndex(s: string): number {
               </div>
               <div>
                 <p class="font-display font-bold text-[22px]" style="color:var(--text);">{{ allPrompts().length }}</p>
-                <p class="text-[12px]" style="color:var(--text-muted);">Total prompts</p>
+                <p class="text-[12px]" style="color:var(--text-muted);">Total</p>
               </div>
             </div>
             <div class="stat-card">
@@ -180,16 +176,20 @@ function colorIndex(s: string): number {
           </div>
         }
 
-        <!-- Tab bar -->
-        <div class="tab-bar">
-          <button class="tab-btn" [class.active]="activeTab() === 'all'" (click)="activeTab.set('all')">
+        <!-- Pill slider — full width -->
+        <div class="pill-slider" #sliderRef>
+          <div class="pill-thumb" [style.left.px]="thumbLeft" [style.width.px]="thumbWidth"></div>
+          <button #btn0 class="pill-btn" [class.active]="activeTab()==='all'"
+            (click)="setTab('all', btn0)">
             All ({{ allPrompts().length }})
           </button>
-          <button class="tab-btn" [class.active]="activeTab() === 'shared'" (click)="activeTab.set('shared')">
+          <button #btn1 class="pill-btn" [class.active]="activeTab()==='shared'"
+            (click)="setTab('shared', btn1)">
             <span class="material-symbols-outlined text-[13px] align-middle mr-1">public</span>
             Shared ({{ sharedCount() }})
           </button>
-          <button class="tab-btn" [class.active]="activeTab() === 'private'" (click)="activeTab.set('private')">
+          <button #btn2 class="pill-btn" [class.active]="activeTab()==='private'"
+            (click)="setTab('private', btn2)">
             <span class="material-symbols-outlined text-[13px] align-middle mr-1">lock</span>
             Private ({{ privateCount() }})
           </button>
@@ -219,18 +219,16 @@ function colorIndex(s: string): number {
             <p class="font-display font-bold text-[16px] mb-1" style="color:var(--text);">
               @if (activeTab() === 'private') { No private prompts yet }
               @else if (activeTab() === 'shared') { No shared prompts yet }
-              @else { You haven't created any prompts yet }
+              @else { No prompts yet }
             </p>
             <p class="text-[13px] mb-5" style="color:var(--text-muted);">
               @if (activeTab() === 'private') { Private prompts are only visible to you. }
               @else { Create your first prompt to get started. }
             </p>
             <button (click)="showAddPrompt = true"
-              class="flex items-center gap-2 h-9 px-5 text-white text-[13px] font-semibold
-                     rounded-lg transition hover:opacity-85"
+              class="flex items-center gap-2 h-9 px-5 text-white text-[13px] font-semibold rounded-lg transition hover:opacity-85"
               style="background:var(--accent);">
-              <span class="material-symbols-outlined text-[17px]">add</span>
-              Create a prompt
+              <span class="material-symbols-outlined text-[17px]">add</span> Create a prompt
             </button>
           </div>
 
@@ -238,32 +236,17 @@ function colorIndex(s: string): number {
         } @else {
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             @for (p of filteredPrompts(); track p.id) {
+              <div style="display:flex; flex-direction:column;">
 
-              <!--
-                We render a custom card manually here instead of <app-prompt-card>
-                so we can inject the visibility pill cleanly in the header row
-                without any z-index / absolute-positioning overlap.
-              -->
-              <div class="prompt-row">
-
-                <!-- ── Inline card ── -->
-                <div class="card group" style="cursor:pointer;"
-                     (click)="router.navigate(['/prompt', p.id])">
-
-                  <!-- Header: visibility + category + hot -->
-                  <div class="flex items-center gap-2 flex-wrap mb-3">
-                    <!-- Visibility pill — always first -->
-                    <span class="vis-pill" [class]="p.visibility === 'private' ? 'vis-pill vis-private' : 'vis-pill vis-shared'">
-                      <span class="material-symbols-outlined" style="font-size:10px;">
-                        {{ p.visibility === 'private' ? 'lock' : 'public' }}
-                      </span>
+                <div class="p-card" (click)="router.navigate(['/prompt', p.id])">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="vis-pill" [class]="p.visibility==='private'?'vis-pill vis-private':'vis-pill vis-shared'">
+                      <span class="material-symbols-outlined" style="font-size:10px;">{{ p.visibility==='private'?'lock':'public' }}</span>
                       {{ p.visibility }}
                     </span>
                     @if (p.category) {
                       <span class="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wide"
-                            style="background:var(--accent-bg); color:var(--accent-txt);">
-                        {{ p.category.name }}
-                      </span>
+                            style="background:var(--accent-bg); color:var(--accent-txt);">{{ p.category.name }}</span>
                     }
                     @if (p.is_hot) {
                       <span class="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wide"
@@ -271,75 +254,55 @@ function colorIndex(s: string): number {
                     }
                   </div>
 
-                  <!-- Title + description -->
-                  <h3 class="font-display font-bold text-[15px] mb-1 line-clamp-2" style="color:var(--text);">
-                    {{ p.title }}
-                  </h3>
-                  <p class="text-[13px] line-clamp-2 leading-relaxed mb-3" style="color:var(--text-muted);">
-                    {{ p.description }}
-                  </p>
+                  <h3 class="font-display font-bold text-[15px] line-clamp-2" style="color:var(--text);">{{ p.title }}</h3>
+                  <p class="text-[13px] line-clamp-2 leading-relaxed" style="color:var(--text-muted);">{{ p.description }}</p>
 
-                  <!-- Variable pills -->
                   @if (p.variables.length) {
-                    <div class="flex flex-wrap gap-1.5 mb-3">
-                      @for (v of p.variables.slice(0, 4); track v) {
-                        <span class="inline-block px-2 py-0.5 text-[11px] font-mono font-semibold rounded-md border"
-                              [style]="paramStyle(v)">
+                    <div class="flex flex-wrap gap-1.5">
+                      @for (v of p.variables.slice(0, 3); track v) {
+                        <span class="inline-block px-2 py-0.5 text-[11px] font-mono font-semibold rounded-md border" [style]="paramStyle(v)">
                           {{ '{{' + v + '}}' }}
                         </span>
                       }
-                      @if (p.variables.length > 4) {
-                        <span class="text-[11px]" style="color:var(--text-muted);">+{{ p.variables.length - 4 }} more</span>
+                      @if (p.variables.length > 3) {
+                        <span class="text-[11px]" style="color:var(--text-muted);">+{{ p.variables.length - 3 }}</span>
                       }
                     </div>
                   }
 
-                  <!-- Tags -->
                   @if (p.tags.length) {
-                    <div class="flex flex-wrap gap-1.5 mb-3" (click)="$event.stopPropagation()">
-                      @for (tag of p.tags.slice(0, 4); track tag.id) {
-                        <span class="inline-block px-2 py-0.5 text-[11px] font-medium rounded-full"
-                              [style]="tagStyle(tag.name)">
+                    <div class="flex flex-wrap gap-1.5" (click)="$event.stopPropagation()">
+                      @for (tag of p.tags.slice(0, 3); track tag.id) {
+                        <span class="inline-block px-2 py-0.5 text-[11px] font-medium rounded-full" [style]="tagStyle(tag.name)">
                           #{{ tag.name }}
                         </span>
                       }
                     </div>
                   }
 
-                  <!-- Footer: author + stats -->
-                  <div class="flex items-center justify-between pt-2" style="border-top:1px solid var(--border);">
-                    <div class="flex items-center gap-2">
-                      <div class="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white"
-                           style="background:var(--accent);">
-                        {{ p.author.username[0].toUpperCase() }}
-                      </div>
-                      <span class="text-[12px]" style="color:var(--text-muted);">{{ p.author.username }}</span>
-                    </div>
+                  <div class="flex items-center justify-between pt-2" style="border-top:1px solid var(--border); margin-top:auto;">
+                    <span class="text-[12px]" style="color:var(--text-muted);">{{ p.author.username }}</span>
                     <div class="flex items-center gap-3 text-[12px]" style="color:var(--text-muted);">
                       <span class="flex items-center gap-1">
-                        <span class="material-symbols-outlined" style="font-size:15px;">arrow_upward</span>
-                        {{ p.vote_count }}
+                        <span class="material-symbols-outlined" style="font-size:15px;">arrow_upward</span>{{ p.vote_count }}
                       </span>
                       <span class="flex items-center gap-1">
-                        <span class="material-symbols-outlined" style="font-size:15px;">content_copy</span>
-                        {{ p.copy_count }}
+                        <span class="material-symbols-outlined" style="font-size:15px;">content_copy</span>{{ p.copy_count }}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <!-- ── Owner action bar ── -->
-                <div class="card-actions">
-                  <button class="action-btn promote" (click)="toggleVisibility(p)"
-                    [title]="p.visibility === 'private' ? 'Make shared' : 'Make private'">
-                    <span class="material-symbols-outlined" style="font-size:14px;">
-                      {{ p.visibility === 'private' ? 'public' : 'lock' }}
-                    </span>
-                    {{ p.visibility === 'private' ? 'Make shared' : 'Make private' }}
+                <div class="owner-actions">
+                  <button class="oa-btn edit" (click)="openEdit(p)">
+                    <span class="material-symbols-outlined" style="font-size:14px;">edit</span>Edit
                   </button>
-                  <button class="action-btn danger" (click)="confirmDelete(p)">
-                    <span class="material-symbols-outlined" style="font-size:14px;">delete</span>
-                    Delete
+                  <button class="oa-btn vis" (click)="toggleVisibility(p)">
+                    <span class="material-symbols-outlined" style="font-size:14px;">{{ p.visibility==='private'?'public':'lock' }}</span>
+                    {{ p.visibility==='private'?'Share':'Make private' }}
+                  </button>
+                  <button class="oa-btn danger" (click)="confirmDelete(p)">
+                    <span class="material-symbols-outlined" style="font-size:14px;">delete</span>Delete
                   </button>
                 </div>
 
@@ -351,49 +314,46 @@ function colorIndex(s: string): number {
       </div>
     </main>
 
-    <!-- Delete confirm modal -->
+    <!-- Delete confirm -->
     @if (promptToDelete()) {
       <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
-           style="background:rgba(0,0,0,0.5); backdrop-filter:blur(4px);"
-           (click)="promptToDelete.set(null)">
+           style="background:rgba(0,0,0,0.5); backdrop-filter:blur(4px);" (click)="promptToDelete.set(null)">
         <div class="rounded-2xl p-6 w-full max-w-sm shadow-2xl"
-             style="background:var(--surface); border:1px solid var(--border);"
-             (click)="$event.stopPropagation()">
-          <div class="flex items-center justify-center w-12 h-12 rounded-full mb-4 mx-auto"
-               style="background:var(--hot-bg);">
+             style="background:var(--surface); border:1px solid var(--border);" (click)="$event.stopPropagation()">
+          <div class="flex items-center justify-center w-12 h-12 rounded-full mb-4 mx-auto" style="background:var(--hot-bg);">
             <span class="material-symbols-outlined text-[22px]" style="color:var(--hot);">delete</span>
           </div>
-          <h3 class="font-display font-bold text-[16px] text-center mb-1" style="color:var(--text);">
-            Delete prompt?
-          </h3>
+          <h3 class="font-display font-bold text-[16px] text-center mb-1" style="color:var(--text);">Delete prompt?</h3>
           <p class="text-[13px] text-center mb-5" style="color:var(--text-muted);">
             "{{ promptToDelete()!.title }}" will be permanently removed. This cannot be undone.
           </p>
           <div class="flex gap-3">
             <button (click)="promptToDelete.set(null)"
               class="flex-1 h-9 rounded-lg text-[13px] font-semibold border transition"
-              style="background:transparent; border-color:var(--border); color:var(--text-muted);">
-              Cancel
-            </button>
+              style="background:transparent; border-color:var(--border); color:var(--text-muted);">Cancel</button>
             <button (click)="doDelete()" [disabled]="deleting()"
-              class="flex-1 h-9 rounded-lg text-[13px] font-semibold text-white border-none
-                     transition hover:opacity-85 disabled:opacity-50"
-              style="background:var(--hot);">
-              {{ deleting() ? 'Deleting…' : 'Delete' }}
-            </button>
+              class="flex-1 h-9 rounded-lg text-[13px] font-semibold text-white border-none transition hover:opacity-85 disabled:opacity-50"
+              style="background:var(--hot);">{{ deleting() ? 'Deleting…' : 'Delete' }}</button>
           </div>
         </div>
       </div>
     }
 
     @if (showAuth)      { <app-auth-modal (close)="showAuth = false" /> }
-    @if (showAddPrompt) { <app-add-prompt-modal (close)="showAddPrompt = false" (saved)="reload()" /> }
-    @if (promptToSave)  {
+    @if (showAddPrompt) { <app-add-prompt-modal (close)="closeAddModal()" (saved)="reload()" /> }
+    @if (showEditModal && promptToEdit()) {
+      <app-add-prompt-modal
+        [promptToEdit]="promptToEdit()"
+        (close)="closeEditModal()"
+        (saved)="reload()"
+      />
+    }
+    @if (promptToSave) {
       <app-save-to-collection-modal [prompt]="promptToSave" (close)="promptToSave = null" />
     }
   `,
 })
-export class MyPromptsComponent implements OnInit {
+export class MyPromptsComponent implements OnInit, AfterViewInit {
   private promptService = inject(PromptService);
   private auth          = inject(AuthService);
   router                = inject(Router);
@@ -402,12 +362,21 @@ export class MyPromptsComponent implements OnInit {
   loading        = signal(true);
   activeTab      = signal<'all' | 'shared' | 'private'>('all');
   promptToDelete = signal<Prompt | null>(null);
+  promptToEdit   = signal<Prompt | null>(null);
   deleting       = signal(false);
   skeletons      = Array(6).fill(0);
 
   showAuth      = false;
   showAddPrompt = false;
+  showEditModal = false;
   promptToSave: Prompt | null = null;
+
+  thumbLeft  = 3;
+  thumbWidth = 80;
+
+  @ViewChild('btn0') btn0!: ElementRef<HTMLButtonElement>;
+  @ViewChild('btn1') btn1!: ElementRef<HTMLButtonElement>;
+  @ViewChild('btn2') btn2!: ElementRef<HTMLButtonElement>;
 
   filteredPrompts() {
     const tab = this.activeTab(), all = this.allPrompts();
@@ -433,6 +402,24 @@ export class MyPromptsComponent implements OnInit {
     this.loadPrompts();
   }
 
+  ngAfterViewInit() {
+    setTimeout(() => this.snapThumb(this.btn0.nativeElement), 0);
+  }
+
+  setTab(tab: 'all' | 'shared' | 'private', btnEl: HTMLButtonElement) {
+    this.activeTab.set(tab);
+    this.snapThumb(btnEl);
+  }
+
+  private snapThumb(el: HTMLButtonElement) {
+    const slider = el.closest('.pill-slider') as HTMLElement;
+    if (!slider) return;
+    const sliderRect = slider.getBoundingClientRect();
+    const btnRect    = el.getBoundingClientRect();
+    this.thumbLeft  = btnRect.left - sliderRect.left;
+    this.thumbWidth = btnRect.width;
+  }
+
   loadPrompts() {
     this.loading.set(true);
     this.promptService.getMyPrompts().subscribe({
@@ -440,6 +427,10 @@ export class MyPromptsComponent implements OnInit {
       error: () => this.loading.set(false),
     });
   }
+
+  openEdit(p: Prompt) { this.promptToEdit.set(p); this.showEditModal = true; }
+  closeEditModal()    { this.showEditModal = false; this.promptToEdit.set(null); }
+  closeAddModal()     { this.showAddPrompt = false; }
 
   toggleVisibility(p: Prompt) {
     const next = p.visibility === 'private' ? 'shared' : 'private';
@@ -464,17 +455,6 @@ export class MyPromptsComponent implements OnInit {
       },
       error: () => this.deleting.set(false),
     });
-  }
-
-  onVoteChanged(event: { id: number; vote_count: number }) {
-    this.allPrompts.update(list =>
-      list.map(p => p.id === event.id ? { ...p, vote_count: event.vote_count, has_voted: !p.has_voted } : p)
-    );
-  }
-
-  handleSaveToCollection(p: Prompt) {
-    if (!this.auth.isLoggedIn()) this.showAuth = true;
-    else this.promptToSave = p;
   }
 
   reload() { this.loadPrompts(); }

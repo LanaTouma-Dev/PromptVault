@@ -10,192 +10,245 @@ import { CollectionService } from '../../core/services/collection.service';
   imports: [CommonModule, FormsModule],
   styles: [`
     .overlay {
-      position: fixed; inset: 0; z-index: 60;
+      position: fixed; inset: 0; z-index: 9999;
       display: flex; align-items: center; justify-content: center; padding: 1rem;
-      background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
     }
     .sheet {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 16px; box-shadow: 0 24px 64px rgba(0,0,0,0.2);
-      width: 100%; max-width: 360px; overflow: hidden;
-      animation: sheetIn 220ms cubic-bezier(.22,1,.36,1) both;
+      border-radius: 20px; box-shadow: 0 40px 100px rgba(0,0,0,0.4);
+      width: 100%; max-width: 400px;
+      animation: up 200ms cubic-bezier(.22,1,.36,1) both;
     }
-    @keyframes sheetIn {
-      from { opacity: 0; transform: translateY(16px) scale(.97) }
-      to   { opacity: 1; transform: translateY(0) scale(1) }
-    }
-    .sheet-header {
+    @keyframes up { from{opacity:0;transform:translateY(16px) scale(.97)} to{opacity:1;transform:none} }
+
+    .header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      padding: 18px 20px 14px;
     }
-    .collection-row {
-      width: 100%; display: flex; align-items: center; justify-content: space-between;
-      padding: 11px 14px; border-radius: 9px; text-align: left;
-      border: 1px solid var(--border); background: transparent;
-      cursor: pointer; transition: border-color 0.12s, background 0.12s;
+    .close-btn {
+      width: 28px; height: 28px; border-radius: 8px; border: none;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface2); color: var(--text-muted);
+      cursor: pointer; transition: all 0.12s; flex-shrink: 0;
     }
-    .collection-row:hover { border-color: var(--border-mid); background: var(--surface2); }
-    .collection-row.selected { border-color: var(--accent); background: var(--accent-bg); }
-    .success-banner {
-      margin: 12px 20px 0;
-      background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3);
-      color: #16a34a; border-radius: 8px; padding: 9px 13px;
-      font-size: 13px; font-weight: 600; display: flex; align-items: center; gap-8px;
+    .close-btn:hover { color: var(--text); }
+
+    .prompt-label {
+      margin: 0 20px 14px; padding: 10px 14px;
+      background: var(--surface2); border-radius: 10px;
+      border-left: 3px solid var(--accent);
     }
-    .new-input {
-      flex: 1; padding: 8px 12px; font-size: 13px;
+
+    .divider { height: 1px; background: var(--border); margin: 0 0 12px; }
+
+    .list-wrap {
+      max-height: 220px; overflow-y: auto; padding: 0 12px;
+    }
+    .list-wrap::-webkit-scrollbar { width: 4px; }
+    .list-wrap::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 4px; }
+
+    .coll-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 10px; border-radius: 10px; cursor: pointer;
+      transition: background 0.12s; border: none; background: transparent;
+      width: 100%; text-align: left;
+    }
+    .coll-row:hover { background: var(--surface2); }
+    .coll-row.active { background: var(--accent-bg); }
+    .coll-row:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .coll-icon {
+      width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
       background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text); outline: none;
-      transition: border-color 0.12s;
+      transition: all 0.12s;
     }
-    .new-input:focus { border-color: var(--accent); }
+    .coll-row.active .coll-icon { background: var(--accent-bg); border-color: var(--accent); }
+
+    .footer-area { padding: 12px 12px 16px; }
+
+    .new-row { display: flex; gap: 8px; }
+    .new-input {
+      flex: 1; padding: 8px 11px; font-size: 13px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 9px; color: var(--text); outline: none;
+    }
+    .new-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
     .new-input::placeholder { color: var(--text-muted); opacity: 0.5; }
+
     .btn-save {
-      padding: 8px 14px; font-size: 13px; font-weight: 600; border: none;
-      border-radius: 8px; cursor: pointer; color: #fff;
-      background: var(--accent); transition: opacity 0.12s;
+      padding: 0 14px; height: 36px; font-size: 13px; font-weight: 600;
+      border: none; border-radius: 9px; cursor: pointer; color: #fff;
+      background: var(--accent); transition: opacity 0.12s; white-space: nowrap;
     }
     .btn-save:hover { opacity: 0.88; }
     .btn-save:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-cancel {
+      height: 36px; width: 36px; display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border); border-radius: 9px; cursor: pointer;
+      background: var(--surface2); color: var(--text-muted); transition: all 0.12s;
+    }
+    .btn-cancel:hover { color: var(--text); }
+
     .btn-new {
       width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;
-      padding: 10px; font-size: 13px; font-weight: 600; border-radius: 9px;
-      border: 1px solid var(--border); background: var(--surface2);
+      padding: 9px; font-size: 13px; font-weight: 500; border-radius: 9px;
+      border: 1px solid var(--border); background: transparent;
       color: var(--text-muted); cursor: pointer; transition: all 0.12s;
     }
-    .btn-new:hover { border-color: var(--border-mid); color: var(--text); }
+    .btn-new:hover { background: var(--surface2); color: var(--text); border-color: var(--border-mid); }
+
+    .toast {
+      display: flex; align-items: center; gap: 8px;
+      margin: 0 20px 12px; padding: 10px 13px; border-radius: 10px;
+      background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.22);
+      color: #16a34a; font-size: 13px; font-weight: 600;
+    }
+
+    .spinner { display: flex; justify-content: center; padding: 24px 0; }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg) } }
+
+    .empty-msg { text-align: center; padding: 20px 0; font-size: 13px; color: var(--text-muted); }
   `],
   template: `
     <div class="overlay" (click)="close.emit()">
       <div class="sheet" (click)="$event.stopPropagation()">
 
-        <div class="sheet-header">
-          <h3 class="font-display font-bold text-[15px]" style="color:var(--text);">Save to Collection</h3>
-          <button (click)="close.emit()" style="color:var(--text-muted);">
-            <span class="material-symbols-outlined text-[20px]">close</span>
+        <div class="header">
+          <div>
+            <p class="font-display font-bold text-[16px]" style="color:var(--text);">Save to Collection</p>
+            <p class="text-[12px] mt-0.5" style="color:var(--text-muted);">Choose a collection below</p>
+          </div>
+          <button class="close-btn" (click)="close.emit()">
+            <span class="material-symbols-outlined" style="font-size:17px;">close</span>
           </button>
         </div>
 
-        @if (justSavedCollection()) {
-          <div class="success-banner">
-            <span class="material-symbols-outlined text-[17px] mr-2">check_circle</span>
-            Saved to {{ justSavedCollection() }}
+        <div class="prompt-label">
+          <p style="font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            {{ prompt().title }}
+          </p>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            {{ prompt().description || 'No description' }}
+          </p>
+        </div>
+
+        @if (justSaved()) {
+          <div class="toast" style="margin-bottom:0;">
+            <span class="material-symbols-outlined" style="font-size:16px;">check_circle</span>
+            Saved to "{{ justSaved() }}"
           </div>
         }
 
-        <div class="p-4">
+        <div class="divider" style="margin-top:12px;"></div>
 
-          <!-- Prompt preview -->
-          <div class="flex gap-3 items-start p-3 rounded-10 mb-4"
-               style="background:var(--surface2); border:1px solid var(--border); border-radius:10px;">
-            <span class="material-symbols-outlined text-[18px] mt-0.5" style="color:var(--accent-txt);">description</span>
-            <div>
-              <p class="text-[13px] font-semibold line-clamp-1" style="color:var(--text);">{{ prompt().title }}</p>
-              <p class="text-[12px] line-clamp-1 mt-0.5" style="color:var(--text-muted);">{{ prompt().description }}</p>
-            </div>
+        @if (loading()) {
+          <div class="spinner">
+            <span class="material-symbols-outlined spin" style="font-size:22px; color:var(--text-muted);">progress_activity</span>
           </div>
-
-          @if (loading()) {
-            <div class="flex justify-center py-5">
-              <span class="material-symbols-outlined animate-spin" style="color:var(--border-mid);">progress_activity</span>
-            </div>
-          } @else {
-            <div class="space-y-2 mb-4 max-h-44 overflow-y-auto pr-0.5">
-              @for (c of collections(); track c.id) {
-                <button class="collection-row" [class.selected]="isPromptInCollection(c.id)"
-                  (click)="toggleCollection(c)" [disabled]="saving()">
-                  <div class="flex items-center gap-3">
-                    <span class="text-[18px]">{{ c.icon }}</span>
-                    <div class="text-left">
-                      <p class="text-[13px] font-semibold" style="color:var(--text);">{{ c.name }}</p>
-                      <p class="text-[11px]" style="color:var(--text-muted);">{{ c.prompt_count }} prompts</p>
-                    </div>
-                  </div>
-                  @if (isPromptInCollection(c.id)) {
-                    <span class="material-symbols-outlined text-[19px]" style="color:var(--accent-txt);">check_circle</span>
-                  }
-                </button>
-              }
-              @if (collections().length === 0) {
-                <p class="text-[13px] text-center py-3" style="color:var(--text-muted);">No collections yet.</p>
-              }
-            </div>
-          }
-
-          <div style="border-top:1px solid var(--border); padding-top:14px;">
-            @if (creatingNew()) {
-              <div class="flex gap-2">
-                <input type="text" [(ngModel)]="newCollectionName" placeholder="Collection name…"
-                  class="new-input" (keyup.enter)="createCollection()" />
-                <button (click)="createCollection()" class="btn-save"
-                  [disabled]="!newCollectionName.trim() || saving()">Save</button>
-                <button (click)="creatingNew.set(false)"
-                  class="px-3 rounded-8 text-[12px] font-medium"
-                  style="background:var(--surface2); color:var(--text-muted); border:1px solid var(--border); border-radius:8px;">
-                  ✕
-                </button>
-              </div>
-            } @else {
-              <button (click)="creatingNew.set(true)" class="btn-new">
-                <span class="material-symbols-outlined text-[17px]">add</span>
-                New Collection
+        } @else {
+          <div class="list-wrap">
+            @if (collections().length === 0) {
+              <p class="empty-msg">No collections yet — create one below.</p>
+            }
+            @for (c of collections(); track c.id) {
+              <button class="coll-row" [class.active]="isIn(c.id)"
+                (click)="toggle(c)" [disabled]="saving()">
+                <div class="coll-icon">
+                  <span class="material-symbols-outlined" style="font-size:18px; color:var(--accent-txt);">
+                    {{ isIn(c.id) ? 'bookmark' : 'bookmark_border' }}
+                  </span>
+                </div>
+                <div style="flex:1; min-width:0; text-align:left;">
+                  <p style="font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.name }}</p>
+                  <p style="font-size:11px; color:var(--text-muted);">{{ c.prompt_count }} prompt{{ c.prompt_count !== 1 ? 's' : '' }}</p>
+                </div>
+                @if (isIn(c.id)) {
+                  <span class="material-symbols-outlined" style="font-size:18px; color:var(--accent-txt); flex-shrink:0;">check_circle</span>
+                }
               </button>
             }
           </div>
+        }
+
+        <div class="footer-area">
+          @if (creatingNew()) {
+            <div class="new-row">
+              <input class="new-input" type="text"
+                [(ngModel)]="newName"
+                placeholder="Collection name…"
+                (keyup.enter)="createCollection()"
+                autofocus />
+              <button class="btn-save" (click)="createCollection()"
+                [disabled]="!newName.trim() || saving()">Save</button>
+              <button class="btn-cancel" (click)="creatingNew.set(false)">
+                <span class="material-symbols-outlined" style="font-size:16px;">close</span>
+              </button>
+            </div>
+          } @else {
+            <button class="btn-new" (click)="creatingNew.set(true)">
+              <span class="material-symbols-outlined" style="font-size:16px;">add</span>
+              New Collection
+            </button>
+          }
         </div>
+
       </div>
     </div>
   `,
 })
 export class SaveToCollectionModalComponent implements OnInit {
   prompt = input.required<Prompt>();
-  close = output<void>();
+  close  = output<void>();
 
   private collectionService = inject(CollectionService);
 
   collections = signal<Collection[]>([]);
-  loading = signal(true);
-  saving = signal(false);
+  loading     = signal(true);
+  saving      = signal(false);
   creatingNew = signal(false);
-  newCollectionName = '';
-  justSavedCollection = signal('');
-  collectionContains = signal<Set<number>>(new Set());
+  justSaved   = signal('');
+  contains    = signal<Set<number>>(new Set());
+  newName     = '';
 
-  ngOnInit() { this.loadCollections(); }
+  ngOnInit() { this.load(); }
 
-  loadCollections() {
+  load() {
     this.loading.set(true);
     this.collectionService.getMyCollections().subscribe({
-      next: (res) => {
+      next: res => {
         this.collections.set(res.results);
-        const contains = new Set<number>();
+        const s = new Set<number>();
         res.results.forEach(c => {
-          if (c.preview_prompts?.some((p: any) => p.id === this.prompt().id)) contains.add(c.id);
+          if (c.preview_prompts?.some((p: any) => p.id === this.prompt().id)) s.add(c.id);
         });
-        this.collectionContains.set(contains);
+        this.contains.set(s);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
     });
   }
 
-  isPromptInCollection(id: number) { return this.collectionContains().has(id); }
+  isIn(id: number) { return this.contains().has(id); }
 
-  toggleCollection(c: Collection) {
+  toggle(c: Collection) {
     if (this.saving()) return;
     this.saving.set(true);
-    if (this.isPromptInCollection(c.id)) {
+    if (this.isIn(c.id)) {
       this.collectionService.removePrompt(c.id, this.prompt().id).subscribe({
-        next: () => { this.collectionContains.update(s => { s.delete(c.id); return new Set(s); }); this.saving.set(false); },
+        next: () => { this.contains.update(s => { s.delete(c.id); return new Set(s); }); this.saving.set(false); },
         error: () => this.saving.set(false),
       });
     } else {
       this.collectionService.addPrompt(c.id, this.prompt().id).subscribe({
         next: () => {
-          this.collectionContains.update(s => { s.add(c.id); return new Set(s); });
+          this.contains.update(s => { s.add(c.id); return new Set(s); });
           this.saving.set(false);
-          this.justSavedCollection.set(c.name);
-          setTimeout(() => this.justSavedCollection.set(''), 2500);
+          this.justSaved.set(c.name);
+          setTimeout(() => this.justSaved.set(''), 2500);
         },
         error: () => this.saving.set(false),
       });
@@ -203,16 +256,16 @@ export class SaveToCollectionModalComponent implements OnInit {
   }
 
   createCollection() {
-    const name = this.newCollectionName.trim();
+    const name = this.newName.trim();
     if (!name || this.saving()) return;
     this.saving.set(true);
-    this.collectionService.createCollection({ name, icon: '📁' }).subscribe({
-      next: (newCol) => {
+    this.collectionService.createCollection({ name }).subscribe({
+      next: newCol => {
         this.collections.update(list => [newCol, ...list]);
-        this.newCollectionName = '';
+        this.newName = '';
         this.creatingNew.set(false);
         this.saving.set(false);
-        this.toggleCollection(newCol);
+        this.toggle(newCol);
       },
       error: () => this.saving.set(false),
     });
