@@ -17,7 +17,7 @@ import { AuthService } from '../../core/services/auth.service';
         </div>
       </div>
 
-      <!-- Search — pill style, takes remaining space -->
+      <!-- Search : pill style, takes remaining space -->
       <div class="flex-1 max-w-md">
         <div class="relative">
           <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -33,7 +33,7 @@ import { AuthService } from '../../core/services/auth.service';
       </div>
 
 
-      <!-- Actions — pushed right -->
+      <!-- Actions : pushed right -->
       <div class="flex items-center gap-2.5 ml-auto flex-shrink-0">
         @if (auth.isLoggedIn()) {
           <button

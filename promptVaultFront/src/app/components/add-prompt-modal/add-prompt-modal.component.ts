@@ -11,18 +11,18 @@ import { AITool, Category } from '../../models/prompt.model';
 const VAR_REGEX = /\{\{(\w+)\}\}/g;
 
 const BUILTIN_MODELS: Array<Pick<AITool, 'name' | 'pricing' | 'color'>> = [
-  { name: 'ChatGPT',        pricing: 'freemium', color: '#10a37f' },
-  { name: 'Claude',         pricing: 'freemium', color: '#cc785c' },
-  { name: 'GPT-4o',         pricing: 'paid',     color: '#10a37f' },
-  { name: 'Gemini',         pricing: 'freemium', color: '#4285F4' },
-  { name: 'GitHub Copilot', pricing: 'paid',     color: '#1F2328' },
-  { name: 'Llama 3',        pricing: 'free',     color: '#0467DF' },
-  { name: 'Mistral',        pricing: 'freemium', color: '#FF7000' },
-  { name: 'Grok',           pricing: 'freemium', color: '#1DA1F2' },
-  { name: 'Perplexity',     pricing: 'freemium', color: '#20808D' },
-  { name: 'DeepSeek',       pricing: 'free',     color: '#4D6BFE' },
-  { name: 'Command R+',     pricing: 'paid',     color: '#39594D' },
-  { name: 'Phi-3',          pricing: 'free',     color: '#00A8E0' },
+  { name: 'ChatGPT', pricing: 'freemium', color: '#10a37f' },
+  { name: 'Claude', pricing: 'freemium', color: '#cc785c' },
+  { name: 'GPT-4o', pricing: 'paid', color: '#10a37f' },
+  { name: 'Gemini', pricing: 'freemium', color: '#4285F4' },
+  { name: 'GitHub Copilot', pricing: 'paid', color: '#1F2328' },
+  { name: 'Llama 3', pricing: 'free', color: '#0467DF' },
+  { name: 'Mistral', pricing: 'freemium', color: '#FF7000' },
+  { name: 'Grok', pricing: 'freemium', color: '#1DA1F2' },
+  { name: 'Perplexity', pricing: 'freemium', color: '#20808D' },
+  { name: 'DeepSeek', pricing: 'free', color: '#4D6BFE' },
+  { name: 'Command R+', pricing: 'paid', color: '#39594D' },
+  { name: 'Phi-3', pricing: 'free', color: '#00A8E0' },
 ];
 
 type ModelEntry = Pick<AITool, 'name' | 'pricing' | 'color'> & { id?: number };
@@ -368,7 +368,7 @@ type ModelEntry = Pick<AITool, 'name' | 'pricing' | 'color'> & { id?: number };
             }
             @if (dropdownOpen && filteredModels().length === 0 && modelQuery.trim()) {
               <div class="model-dropdown">
-                <div class="model-empty">No match — add "{{ modelQuery.trim() }}" as custom below</div>
+                <div class="model-empty">No match, add "{{ modelQuery.trim() }}" as custom below</div>
               </div>
             }
 
@@ -496,9 +496,9 @@ export class AddPromptModalComponent {
   customModelName = '';
   customPricing: 'free' | 'freemium' | 'paid' = 'freemium';
   pricingOpts = [
-    { label: 'Free',     value: 'free'     as const },
+    { label: 'Free', value: 'free' as const },
     { label: 'Freemium', value: 'freemium' as const },
-    { label: 'Paid',     value: 'paid'     as const },
+    { label: 'Paid', value: 'paid' as const },
   ];
 
   private allModels = signal<ModelEntry[]>([]);

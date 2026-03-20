@@ -96,15 +96,6 @@ import { AuthService } from '../../core/services/auth.service';
 
       </div>
 
-      <!-- Footer: Syriatel SDU stamp -->
-      <div class="px-4 py-3 border-t border-slate-100">
-        <img src="syriatel-logo.png" alt="Syriatel" class="h-5 w-auto object-contain mb-1.5" style="opacity:0.65;" />
-        <p class="text-[10px] text-slate-400 leading-snug">
-          An initiative by<br/>
-          <span class="font-semibold text-slate-500">Software Development Section</span>
-        </p>
-      </div>
-
     </aside>
   `,
 })
@@ -119,7 +110,7 @@ export class SidebarComponent implements OnInit {
   private collectionService = inject(CollectionService);
   private tagService = inject(TagService);
   auth = inject(AuthService);
-  
+
   categories: Category[] = [];
   collections = signal<Collection[]>([]);
   tags: Tag[] = [];
@@ -128,7 +119,7 @@ export class SidebarComponent implements OnInit {
     this.categoryService.getCategories().subscribe(res => {
       this.categories = res.results;
     });
-    
+
     this.tagService.getTags().subscribe(res => {
       this.tags = res.results;
     });

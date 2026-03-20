@@ -203,8 +203,8 @@ function parseContent(content: string): Segment[] {
                   <div class="grid grid-cols-2 gap-3">
                     @for (v of prompt()!.variables; track v) {
                       <div>
-                        <label class="block text-xs font-medium text-slate-500 mb-1.5">
-                          <span class="font-mono text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                        <label class="block mb-3">
+                          <span class="inline-block font-mono text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded border border-amber-200">
                             {{ '{' }}{{ '{' }}{{ v }}{{ '}' }}{{ '}' }}
                           </span>
                         </label>
@@ -231,14 +231,14 @@ function parseContent(content: string): Segment[] {
                     </button>
                     @if (filledCount() < prompt()!.variables.length) {
                       <p class="text-xs text-slate-400">
-                        {{ prompt()!.variables.length - filledCount() }} variable(s) still empty — they'll be copied as
+                        {{ prompt()!.variables.length - filledCount() }} variable(s) still empty, they'll be copied as
                         <span class="font-mono text-amber-600">{{ '{' }}{{ '{' }}name{{ '}' }}{{ '}' }}</span>
                       </p>
                     }
                   </div>
                 </div>
               } @else {
-                <!-- No variables — just show copy button -->
+                <!-- No variables :just show copy button -->
                 <div class="flex justify-end">
                   <button
                     (click)="copyFilled()"
@@ -377,14 +377,14 @@ function parseContent(content: string): Segment[] {
   `,
 })
 export class PromptDetailComponent implements OnInit {
-  router      = inject(Router);
-  private route        = inject(ActivatedRoute);
+  router = inject(Router);
+  private route = inject(ActivatedRoute);
   private promptService = inject(PromptService);
-  private auth          = inject(AuthService);
+  private auth = inject(AuthService);
 
-  prompt  = signal<Prompt | null>(null);
+  prompt = signal<Prompt | null>(null);
   loading = signal(true);
-  copied  = signal(false);
+  copied = signal(false);
   showAuth = false;
   showAddPrompt = false;
 
@@ -453,17 +453,17 @@ export class PromptDetailComponent implements OnInit {
 
   toolPricingClass(pricing: 'free' | 'freemium' | 'paid'): string {
     switch (pricing) {
-      case 'free':     return 'bg-emerald-100 text-emerald-700';
+      case 'free': return 'bg-emerald-100 text-emerald-700';
       case 'freemium': return 'bg-blue-100 text-blue-700';
-      case 'paid':     return 'bg-slate-100 text-slate-600';
+      case 'paid': return 'bg-slate-100 text-slate-600';
     }
   }
 
   pricingLabel(pricing: 'free' | 'freemium' | 'paid'): string {
     switch (pricing) {
-      case 'free':     return 'Free';
+      case 'free': return 'Free';
       case 'freemium': return 'Free tier';
-      case 'paid':     return 'Paid';
+      case 'paid': return 'Paid';
     }
   }
 }
