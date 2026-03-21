@@ -6,11 +6,13 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticate
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Category, Tag, Prompt, Vote, AITool, Collection, CollectionItem
+from .models import Category, Tag, Prompt, Vote, AITool, Comment, Collection, CollectionItem
 from .serializers import (
     CategorySerializer, TagSerializer, AIToolSerializer,
     PromptListSerializer, PromptDetailSerializer,
-    RegisterSerializer, CollectionSerializer, CollectionItemSerializer,
+    CommentSerializer, RegisterSerializer,
+    CollectionSerializer, CollectionItemSerializer,
+    PublicProfileSerializer,
 )
 
 
@@ -34,13 +36,14 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
 
 class PromptViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['title', 'description', 'content']
-    ordering_fields = ['created_at', 'vote_count', 'copy_count']
-    ordering = ['-created_at']
+    filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields      = ['title', 'description', 'content']
+    ordering_fields    = ['created_at', 'vote_count', 'copy_count']
+    ordering           = ['-created_at']
 
     def get_queryset(self):
-        qs = Prompt.objects.select_related('author', 'category').prefetch_related('tags', 'votes', 'compatible_tools')
+        qs = Prompt.objects.select_related('author', 'category', 'forked_from__author') \
+                           .prefetch_related('tags', 'votes', 'compatible_tools', 'forks')
 
         if self.request.user.is_authenticated:
             qs = qs.filter(
@@ -70,6 +73,8 @@ class PromptViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
+    # ── Upvote ────────────────────────────────────────────────────────────────
+
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def upvote(self, request, pk=None):
         prompt = self.get_object()
@@ -83,12 +88,107 @@ class PromptViewSet(viewsets.ModelViewSet):
         prompt.save(update_fields=['vote_count'])
         return Response({'voted': True, 'vote_count': prompt.vote_count})
 
+    # ── Copy tracking ─────────────────────────────────────────────────────────
+
     @action(detail=True, methods=['post'])
     def copy(self, request, pk=None):
         prompt = self.get_object()
         prompt.copy_count += 1
         prompt.save(update_fields=['copy_count'])
         return Response({'copy_count': prompt.copy_count})
+
+    # ── Fork ──────────────────────────────────────────────────────────────────
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def fork(self, request, pk=None):
+        original = self.get_object()
+
+        # Prevent forking your own prompt
+        if original.author == request.user:
+            return Response(
+                {'detail': 'You cannot fork your own prompt.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        forked = Prompt.objects.create(
+            title       = f'{original.title} (fork)',
+            description = original.description,
+            content     = original.content,
+            category    = original.category,
+            visibility  = 'private',   # forks start private so the user can tweak
+            author      = request.user,
+            forked_from = original,
+        )
+        forked.tags.set(original.tags.all())
+        forked.compatible_tools.set(original.compatible_tools.all())
+
+        serializer = PromptDetailSerializer(forked, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    # ── Forks list ────────────────────────────────────────────────────────────
+
+    @action(detail=True, methods=['get'], url_path='forks')
+    def forks_list(self, request, pk=None):
+        prompt = self.get_object()
+        forks  = prompt.forks.filter(visibility='shared') \
+                             .select_related('author', 'category') \
+                             .prefetch_related('tags', 'votes', 'compatible_tools')
+        serializer = PromptListSerializer(forks, many=True, context={'request': request})
+        return Response({'count': forks.count(), 'results': serializer.data})
+
+    # ── Comments ──────────────────────────────────────────────────────────────
+
+    @action(detail=True, methods=['get'], url_path='comments')
+    def comments(self, request, pk=None):
+        prompt = self.get_object()
+        # Only return top-level comments; replies are nested inside each via serializer
+        top_level = prompt.comments.filter(parent__isnull=True) \
+                                   .select_related('author__profile') \
+                                   .prefetch_related('replies__author__profile')
+        serializer = CommentSerializer(top_level, many=True, context={'request': request})
+        return Response({'count': top_level.count(), 'results': serializer.data})
+
+    @action(detail=True, methods=['post'], url_path='comments/add',
+            permission_classes=[IsAuthenticated])
+    def add_comment(self, request, pk=None):
+        prompt = self.get_object()
+        body   = request.data.get('body', '').strip()
+        if not body:
+            return Response({'detail': 'body is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        parent_id = request.data.get('parent_id')
+        parent    = None
+        if parent_id:
+            try:
+                parent = Comment.objects.get(pk=parent_id, prompt=prompt)
+            except Comment.DoesNotExist:
+                return Response({'detail': 'Parent comment not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        comment = Comment.objects.create(
+            prompt=prompt, author=request.user, parent=parent, body=body
+        )
+        serializer = CommentSerializer(comment, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    """
+    Allows editing and deleting individual comments.
+    Only the comment author can modify/delete.
+    """
+    serializer_class   = CommentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Comment.objects.filter(author=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save()
+
+    def destroy(self, request, *args, **kwargs):
+        comment = self.get_object()
+        comment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class RegisterView(APIView):
@@ -107,24 +207,39 @@ class MeView(APIView):
 
     def get(self, request):
         user = request.user
+        try:
+            rep = user.profile.reputation
+        except Exception:
+            rep = 0
         return Response({
-            'id': user.id,
-            'username': user.username,
-            'email': user.email,
+            'id':         user.id,
+            'username':   user.username,
+            'email':      user.email,
             'first_name': user.first_name,
-            'last_name': user.last_name,
+            'last_name':  user.last_name,
+            'reputation': rep,
+            'date_joined': user.date_joined,
         })
 
 
+class PublicProfileView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, username):
+        try:
+            user = User.objects.select_related('profile').get(username=username)
+        except User.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = PublicProfileSerializer(user, context={'request': request})
+        return Response(serializer.data)
+
+
 class CollectionViewSet(viewsets.ModelViewSet):
-    """CRUD for the logged-in user's own collections."""
-    serializer_class = CollectionSerializer
+    serializer_class   = CollectionSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Collection.objects.filter(owner=self.request.user).prefetch_related(
-            'items__prompt'
-        )
+        return Collection.objects.filter(owner=self.request.user).prefetch_related('items__prompt')
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
@@ -132,7 +247,7 @@ class CollectionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='add')
     def add_prompt(self, request, pk=None):
         collection = self.get_object()
-        prompt_id = request.data.get('prompt_id')
+        prompt_id  = request.data.get('prompt_id')
         if not prompt_id:
             return Response({'detail': 'prompt_id required.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -162,10 +277,10 @@ class CollectionViewSet(viewsets.ModelViewSet):
     def prompts(self, request, pk=None):
         collection = self.get_object()
         items = collection.items.select_related(
-            'prompt__author', 'prompt__category'
+            'prompt__author', 'prompt__category', 'prompt__forked_from__author'
         ).prefetch_related(
-            'prompt__tags', 'prompt__compatible_tools', 'prompt__votes'
+            'prompt__tags', 'prompt__compatible_tools', 'prompt__votes', 'prompt__forks'
         ).order_by('order', 'added_at')
-        prompts = [item.prompt for item in items]
+        prompts    = [item.prompt for item in items]
         serializer = PromptListSerializer(prompts, many=True, context={'request': request})
         return Response({'count': len(prompts), 'results': serializer.data})

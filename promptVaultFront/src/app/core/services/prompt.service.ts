@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Prompt, PaginatedResponse, PromptFilters } from '../../models/prompt.model';
+import { Comment, Prompt, PaginatedResponse, PromptFilters, PublicProfile } from '../../models/prompt.model';
 
 const API = 'http://localhost:8000/api';
 
@@ -10,47 +10,44 @@ export class PromptService {
 
   getPrompts(filters: PromptFilters = {}) {
     let params = new HttpParams();
-    if (filters.search)                        params = params.set('search',   filters.search);
-    if (filters.category && filters.category !== 'all')
-                                               params = params.set('category', filters.category);
-    if (filters.tag)                           params = params.set('tag',      filters.tag);
-    if (filters.ordering)                      params = params.set('ordering', filters.ordering);
-    if (filters.hot)                           params = params.set('hot',      'true');
-    if (filters.page)                          params = params.set('page',     filters.page.toString());
+    if (filters.search)                               params = params.set('search',    filters.search);
+    if (filters.category && filters.category !== 'all') params = params.set('category', filters.category);
+    if (filters.tag)                                  params = params.set('tag',       filters.tag);
+    if (filters.ordering)                             params = params.set('ordering',  filters.ordering);
+    if (filters.hot)                                  params = params.set('hot',       'true');
+    if (filters.page)                                 params = params.set('page',      filters.page.toString());
     return this.http.get<PaginatedResponse<Prompt>>(`${API}/prompts/`, { params });
   }
 
-  /** Fetch only the current user's own prompts (both shared + private). */
   getMyPrompts() {
-    // The backend returns private prompts only for the authenticated author,
-    // so fetching with a large page size and no visibility filter gives us everything.
-    const params = new HttpParams()
-      .set('ordering', '-created_at')
-      .set('page_size', '200');
+    const params = new HttpParams().set('ordering', '-created_at').set('page_size', '200');
     return this.http.get<PaginatedResponse<Prompt>>(`${API}/prompts/`, { params });
   }
 
-  getPrompt(id: number) {
-    return this.http.get<Prompt>(`${API}/prompts/${id}/`);
-  }
+  getPrompt(id: number) { return this.http.get<Prompt>(`${API}/prompts/${id}/`); }
+  createPrompt(data: Record<string, unknown>) { return this.http.post<Prompt>(`${API}/prompts/`, data); }
+  updatePrompt(id: number, data: Record<string, unknown>) { return this.http.patch<Prompt>(`${API}/prompts/${id}/`, data); }
+  deletePrompt(id: number) { return this.http.delete(`${API}/prompts/${id}/`); }
 
-  createPrompt(data: Record<string, unknown>) {
-    return this.http.post<Prompt>(`${API}/prompts/`, data);
-  }
+  upvote(id: number)    { return this.http.post<{ voted: boolean; vote_count: number }>(`${API}/prompts/${id}/upvote/`, {}); }
+  trackCopy(id: number) { return this.http.post<{ copy_count: number }>(`${API}/prompts/${id}/copy/`, {}); }
 
-  updatePrompt(id: number, data: Partial<Prompt> | Record<string, unknown>) {
-    return this.http.patch<Prompt>(`${API}/prompts/${id}/`, data);
-  }
+  // ── Forking ────────────────────────────────────────────────────────────────
+  forkPrompt(id: number) { return this.http.post<Prompt>(`${API}/prompts/${id}/fork/`, {}); }
+  getForks(id: number)   { return this.http.get<PaginatedResponse<Prompt>>(`${API}/prompts/${id}/forks/`); }
 
-  deletePrompt(id: number) {
-    return this.http.delete(`${API}/prompts/${id}/`);
+  // ── Comments ───────────────────────────────────────────────────────────────
+  getComments(promptId: number) {
+    return this.http.get<{ count: number; results: Comment[] }>(`${API}/prompts/${promptId}/comments/`);
   }
+  addComment(promptId: number, body: string, parentId?: number) {
+    return this.http.post<Comment>(`${API}/prompts/${promptId}/comments/add/`, {
+      body,
+      ...(parentId ? { parent_id: parentId } : {}),
+    });
+  }
+  deleteComment(commentId: number) { return this.http.delete(`${API}/comments/${commentId}/`); }
 
-  upvote(id: number) {
-    return this.http.post<{ voted: boolean; vote_count: number }>(`${API}/prompts/${id}/upvote/`, {});
-  }
-
-  trackCopy(id: number) {
-    return this.http.post<{ copy_count: number }>(`${API}/prompts/${id}/copy/`, {});
-  }
+  // ── Public profile ─────────────────────────────────────────────────────────
+  getPublicProfile(username: string) { return this.http.get<PublicProfile>(`${API}/profile/${username}/`); }
 }

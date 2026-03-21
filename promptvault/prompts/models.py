@@ -5,15 +5,14 @@ from django.utils.text import slugify
 
 
 def extract_variables(content):
-    """Extract {{variable}} placeholders from prompt content."""
     return sorted(set(re.findall(r'\{\{(\w+)\}\}', content)))
 
 
 class Category(models.Model):
-    name = models.CharField(max_length=100)
-    slug = models.SlugField(unique=True, blank=True)
-    color = models.CharField(max_length=30, default='blue')   # Tailwind color name
-    icon = models.CharField(max_length=50, default='folder')  # Material Symbol name
+    name  = models.CharField(max_length=100)
+    slug  = models.SlugField(unique=True, blank=True)
+    color = models.CharField(max_length=30, default='blue')
+    icon  = models.CharField(max_length=50, default='folder')
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -43,30 +42,40 @@ class Tag(models.Model):
 
 
 class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    user       = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     avatar_url = models.URLField(blank=True)
-    bio = models.TextField(blank=True)
-    role = models.CharField(max_length=100, blank=True)  # e.g. "Senior Engineer"
+    bio        = models.TextField(blank=True)
+    role       = models.CharField(max_length=100, blank=True)
 
     def __str__(self):
         return f'{self.user.username} profile'
 
+    @property
+    def reputation(self):
+        """
+        Reputation formula:
+          +10  per upvote received on any prompt
+          +25  per fork of any prompt (someone found it worth building on)
+          +5   per time any prompt is saved to a collection
+        """
+        prompts = self.user.prompts.all()
+        votes_score = sum(p.vote_count for p in prompts) * 10
+        forks_score = sum(p.forks.count() for p in prompts) * 25
+        saves_score = sum(p.collection_items.count() for p in prompts) * 5
+        return votes_score + forks_score + saves_score
+
 
 class AITool(models.Model):
-    PRICING_FREE      = 'free'
-    PRICING_FREEMIUM  = 'freemium'
-    PRICING_PAID      = 'paid'
-    PRICING_CHOICES   = [
+    PRICING_CHOICES = [
         ('free',     'Free'),
         ('freemium', 'Free tier available'),
         ('paid',     'Paid only'),
     ]
-
     name     = models.CharField(max_length=100)
     slug     = models.SlugField(unique=True, blank=True)
-    provider = models.CharField(max_length=100, blank=True)  # "Anthropic", "OpenAI" …
+    provider = models.CharField(max_length=100, blank=True)
     pricing  = models.CharField(max_length=20, choices=PRICING_CHOICES, default='paid')
-    color    = models.CharField(max_length=30, default='slate')  # Tailwind color name for badge
+    color    = models.CharField(max_length=30, default='slate')
 
     class Meta:
         ordering = ['name']
@@ -81,31 +90,31 @@ class AITool(models.Model):
 
 
 class Prompt(models.Model):
-    VISIBILITY_SHARED = 'shared'
+    VISIBILITY_SHARED  = 'shared'
     VISIBILITY_PRIVATE = 'private'
     VISIBILITY_CHOICES = [
-        (VISIBILITY_SHARED, 'Shared'),
+        (VISIBILITY_SHARED,  'Shared'),
         (VISIBILITY_PRIVATE, 'Private'),
     ]
 
-    title = models.CharField(max_length=200)
+    title       = models.CharField(max_length=200)
     description = models.TextField(blank=True)
-    content = models.TextField()
-    variables = models.JSONField(default=list, blank=True)
+    content     = models.TextField()
+    variables   = models.JSONField(default=list, blank=True)
 
-    author = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, related_name='prompts'
-    )
-    category = models.ForeignKey(
-        Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='prompts'
-    )
-    tags             = models.ManyToManyField(Tag,    blank=True, related_name='prompts')
-    compatible_tools = models.ManyToManyField('AITool', blank=True, related_name='prompts')
+    author   = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='prompts')
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='prompts')
+    tags             = models.ManyToManyField(Tag,     blank=True, related_name='prompts')
+    compatible_tools = models.ManyToManyField(AITool,  blank=True, related_name='prompts')
 
-    visibility = models.CharField(
-        max_length=20, choices=VISIBILITY_CHOICES, default=VISIBILITY_SHARED
+    # ── Forking ──────────────────────────────────────────────────────────────
+    forked_from = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='forks'
     )
-    is_hot = models.BooleanField(default=False)
+
+    visibility = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default=VISIBILITY_SHARED)
+    is_hot     = models.BooleanField(default=False)
     vote_count = models.IntegerField(default=0)
     copy_count = models.IntegerField(default=0)
 
@@ -116,16 +125,19 @@ class Prompt(models.Model):
         ordering = ['-created_at']
 
     def save(self, *args, **kwargs):
-        # Auto-detect variables before saving
         self.variables = extract_variables(self.content)
         super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
 
+    @property
+    def fork_count(self):
+        return self.forks.count()
+
 
 class Vote(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='votes')
+    user   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='votes')
     prompt = models.ForeignKey(Prompt, on_delete=models.CASCADE, related_name='votes')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -136,15 +148,31 @@ class Vote(models.Model):
         return f'{self.user.username} → {self.prompt.title}'
 
 
-class Collection(models.Model):
-    """A named, user-owned playlist of prompts."""
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='collections')
-    name = models.CharField(max_length=120)
-    description = models.TextField(blank=True)
-    icon = models.CharField(max_length=10, default='📁')  # emoji
-    is_public = models.BooleanField(default=False)
+class Comment(models.Model):
+    prompt    = models.ForeignKey(Prompt, on_delete=models.CASCADE, related_name='comments')
+    author    = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comments')
+    parent    = models.ForeignKey(
+        'self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies'
+    )
+    body      = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'{self.author.username} on "{self.prompt.title}"'
+
+
+class Collection(models.Model):
+    owner       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='collections')
+    name        = models.CharField(max_length=120)
+    description = models.TextField(blank=True)
+    icon        = models.CharField(max_length=10, default='')
+    is_public   = models.BooleanField(default=False)
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-updated_at']
@@ -158,11 +186,10 @@ class Collection(models.Model):
 
 
 class CollectionItem(models.Model):
-    """An ordered entry of a prompt inside a collection."""
     collection = models.ForeignKey(Collection, on_delete=models.CASCADE, related_name='items')
-    prompt = models.ForeignKey(Prompt, on_delete=models.CASCADE, related_name='collection_items')
-    order = models.PositiveIntegerField(default=0)
-    added_at = models.DateTimeField(auto_now_add=True)
+    prompt     = models.ForeignKey(Prompt, on_delete=models.CASCADE, related_name='collection_items')
+    order      = models.PositiveIntegerField(default=0)
+    added_at   = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ('collection', 'prompt')

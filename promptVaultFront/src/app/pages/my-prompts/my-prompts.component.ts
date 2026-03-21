@@ -1,6 +1,6 @@
 import { Component, OnInit, signal, inject, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 
 import { Prompt } from '../../models/prompt.model';
 import { PromptService } from '../../core/services/prompt.service';
@@ -114,6 +114,19 @@ function colorIndex(s: string): number {
 
     .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 0; text-align: center; }
     .empty-icon { width: 64px; height: 64px; border-radius: 16px; display: flex; align-items: center; justify-content: center; background: var(--accent-bg); margin-bottom: 16px; }
+
+    /* Fork highlight */
+    .fork-highlight .p-card {
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 0 3px var(--accent-bg), 0 4px 20px rgba(96,84,232,0.15);
+      animation: forkPulse 1s ease 0.2s both;
+    }
+    @keyframes forkPulse { 0%{transform:scale(1)} 50%{transform:scale(1.012)} 100%{transform:scale(1)} }
+    .fork-new-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700;
+      background: var(--accent); color: #fff; text-transform: uppercase; letter-spacing: 0.05em;
+    }
   `],
   template: `
     <app-navbar
@@ -128,6 +141,18 @@ function colorIndex(s: string): number {
 
     <main class="ml-56 pt-[52px] min-h-screen">
       <div class="max-w-5xl mx-auto px-6 py-6">
+
+        <!-- Fork success banner -->
+        @if (forkedPromptId()) {
+          <div class="flex items-center gap-3 px-4 py-3 rounded-12 mb-5"
+               style="background:var(--accent-bg); border:1px solid var(--accent); border-radius:12px;">
+            <span class="material-symbols-outlined" style="font-size:20px; color:var(--accent-txt);">fork_right</span>
+            <div>
+              <p style="font-size:13px; font-weight:700; color:var(--accent-txt);">Fork created! It's highlighted below.</p>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:2px;">Click <strong style="color:var(--text);">Edit</strong> to modify it, then set visibility to <strong style="color:var(--text);">Shared</strong> to publish it.</p>
+            </div>
+          </div>
+        }
 
         <!-- Header -->
         <div class="flex items-center justify-between mb-6">
@@ -236,10 +261,16 @@ function colorIndex(s: string): number {
         } @else {
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             @for (p of filteredPrompts(); track p.id) {
-              <div style="display:flex; flex-direction:column;">
+              <div style="display:flex; flex-direction:column;" [class.fork-highlight]="forkedPromptId() === p.id">
 
                 <div class="p-card" (click)="router.navigate(['/prompt', p.id])">
                   <div class="flex items-center gap-2 flex-wrap">
+                    @if (forkedPromptId() === p.id) {
+                      <span class="fork-new-badge">
+                        <span class="material-symbols-outlined" style="font-size:11px;">fork_right</span>
+                        New fork
+                      </span>
+                    }
                     <span class="vis-pill" [class]="p.visibility==='private'?'vis-pill vis-private':'vis-pill vis-shared'">
                       <span class="material-symbols-outlined" style="font-size:10px;">{{ p.visibility==='private'?'lock':'public' }}</span>
                       {{ p.visibility }}
@@ -357,6 +388,7 @@ export class MyPromptsComponent implements OnInit, AfterViewInit {
   private promptService = inject(PromptService);
   private auth          = inject(AuthService);
   router                = inject(Router);
+  private route         = inject(ActivatedRoute);
 
   allPrompts     = signal<Prompt[]>([]);
   loading        = signal(true);
@@ -370,6 +402,7 @@ export class MyPromptsComponent implements OnInit, AfterViewInit {
   showAddPrompt = false;
   showEditModal = false;
   promptToSave: Prompt | null = null;
+  forkedPromptId = signal<number | null>(null);
 
   thumbLeft  = 3;
   thumbWidth = 80;
@@ -400,6 +433,17 @@ export class MyPromptsComponent implements OnInit, AfterViewInit {
   ngOnInit() {
     if (!this.auth.isLoggedIn()) { this.router.navigate(['/']); return; }
     this.loadPrompts();
+    // If we arrived here from a fork, highlight that card and switch to Private tab
+    const forkedId = this.route.snapshot.queryParams['forked'];
+    if (forkedId) {
+      this.forkedPromptId.set(+forkedId);
+      this.activeTab.set('private');
+      setTimeout(() => {
+        this.snapThumb(this.btn2.nativeElement);
+        // Clear highlight after 6s
+        setTimeout(() => this.forkedPromptId.set(null), 6000);
+      }, 300);
+    }
   }
 
   ngAfterViewInit() {
