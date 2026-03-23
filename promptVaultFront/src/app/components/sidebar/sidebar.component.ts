@@ -84,6 +84,11 @@ import { AuthService } from '../../core/services/auth.service';
             My Prompts
           </a>
 
+          <a routerLink="/my-forks" routerLinkActive="active-nav" class="nav-link">
+            <span class="material-symbols-outlined" style="font-size:18px;">fork_right</span>
+            My Forks
+          </a>
+
           @if (collections().length > 0) {
             <p class="section-label">Collections</p>
 

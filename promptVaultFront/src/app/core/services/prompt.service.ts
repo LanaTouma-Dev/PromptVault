@@ -24,6 +24,16 @@ export class PromptService {
     return this.http.get<PaginatedResponse<Prompt>>(`${API}/prompts/`, { params });
   }
 
+  getMyOwnPrompts() {
+    const params = new HttpParams().set('mine', 'true').set('ordering', '-created_at').set('page_size', '200');
+    return this.http.get<PaginatedResponse<Prompt>>(`${API}/prompts/`, { params });
+  }
+
+  getMyForks() {
+    const params = new HttpParams().set('forked', 'true').set('ordering', '-created_at').set('page_size', '200');
+    return this.http.get<PaginatedResponse<Prompt>>(`${API}/prompts/`, { params });
+  }
+
   getPrompt(id: number) { return this.http.get<Prompt>(`${API}/prompts/${id}/`); }
   createPrompt(data: Record<string, unknown>) { return this.http.post<Prompt>(`${API}/prompts/`, data); }
   updatePrompt(id: number, data: Record<string, unknown>) { return this.http.patch<Prompt>(`${API}/prompts/${id}/`, data); }

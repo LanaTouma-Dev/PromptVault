@@ -63,6 +63,16 @@ class PromptViewSet(viewsets.ModelViewSet):
         if self.request.query_params.get('hot') == 'true':
             qs = qs.filter(is_hot=True)
 
+        # ?mine=true → only prompts authored by the current user (excludes forks)
+        if self.request.query_params.get('mine') == 'true':
+            if self.request.user.is_authenticated:
+                qs = qs.filter(author=self.request.user, forked_from__isnull=True)
+
+        # ?forked=true → only forks authored by the current user
+        if self.request.query_params.get('forked') == 'true':
+            if self.request.user.is_authenticated:
+                qs = qs.filter(author=self.request.user, forked_from__isnull=False)
+
         return qs
 
     def get_serializer_class(self):
@@ -72,6 +82,22 @@ class PromptViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+    def update(self, request, *args, **kwargs):
+        prompt = self.get_object()
+        # Only the author can edit their own prompt
+        if prompt.author != request.user:
+            return Response({'detail': 'You cannot edit someone else\'s prompt.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Visibility guard: a fork can only be made shared if the original is shared
+        new_visibility = request.data.get('visibility')
+        if new_visibility == 'shared' and prompt.forked_from:
+            if prompt.forked_from.visibility != 'shared':
+                return Response(
+                    {'detail': 'You cannot publish this fork because the original prompt is private.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        return super().update(request, *args, **kwargs)
 
     # ── Upvote ────────────────────────────────────────────────────────────────
 

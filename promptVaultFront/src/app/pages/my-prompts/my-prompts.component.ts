@@ -466,7 +466,7 @@ export class MyPromptsComponent implements OnInit, AfterViewInit {
 
   loadPrompts() {
     this.loading.set(true);
-    this.promptService.getMyPrompts().subscribe({
+    this.promptService.getMyOwnPrompts().subscribe({
       next: res => { this.allPrompts.set(res.results); this.loading.set(false); },
       error: () => this.loading.set(false),
     });
