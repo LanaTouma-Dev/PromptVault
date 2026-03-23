@@ -1,5 +1,1 @@
-{
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
+{"buildCommand":"ng build --configuration production","outputDirectory":"dist/promptVaultFront/browser","rewrites":[{"source":"/(.*)","destination":"/index.html"}]}

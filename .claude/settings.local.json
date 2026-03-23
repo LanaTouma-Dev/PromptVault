@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const a=require\\(''./angular.json''\\); const proj=Object.keys\\(a.projects\\)[0]; console.log\\(JSON.stringify\\(a.projects[proj]?.architect?.build?.options, null, 2\\)\\)\")",
+      "Bash(node -e \"const a=require\\(''./angular.json''\\); const proj=Object.keys\\(a.projects\\)[0]; const build=a.projects[proj]?.architect?.build; console.log\\(JSON.stringify\\(build?.options?.outputPath ?? build?.configurations, null, 2\\)\\)\")"
+    ]
+  }
+}
