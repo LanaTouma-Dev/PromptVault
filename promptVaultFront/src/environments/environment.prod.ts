@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'RAILWAY_URL_PLACEHOLDER/api',
+  apiUrl: 'https://promptvault-production-9ea1.up.railway.app/api',
 };
