@@ -57,10 +57,19 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'promptvault.wsgi.application'
 
-# Database — uses DATABASE_URL env var on Railway, falls back to SQLite locally
-DATABASE_URL = os.environ.get('DATABASE_URL')
-if DATABASE_URL:
-    DATABASES = {'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)}
+# Database — tries DATABASE_URL then POSTGRES_URL, falls back to SQLite locally
+_db_url = (
+    os.environ.get('DATABASE_URL') or
+    os.environ.get('POSTGRES_URL') or
+    os.environ.get('DATABASE_PRIVATE_URL') or
+    ''
+)
+# Ensure the URL has a valid scheme (Railway sometimes omits it)
+if _db_url and _db_url.startswith('://'):
+    _db_url = 'postgresql' + _db_url
+
+if _db_url and '://' in _db_url and not _db_url.startswith('://'):
+    DATABASES = {'default': dj_database_url.parse(_db_url, conn_max_age=600)}
 else:
     DATABASES = {
         'default': {
