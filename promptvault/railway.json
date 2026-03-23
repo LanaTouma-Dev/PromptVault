@@ -5,7 +5,6 @@
   },
   "deploy": {
     "startCommand": "python manage.py collectstatic --noinput && python manage.py migrate && gunicorn promptvault.wsgi --bind 0.0.0.0:$PORT",
-    "healthcheckPath": "/api/prompts/",
     "restartPolicyType": "ON_FAILURE"
   }
 }
