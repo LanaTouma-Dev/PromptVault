@@ -57,19 +57,25 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'promptvault.wsgi.application'
 
-# Database — tries DATABASE_URL then POSTGRES_URL, falls back to SQLite locally
-_db_url = (
-    os.environ.get('DATABASE_URL') or
-    os.environ.get('POSTGRES_URL') or
-    os.environ.get('DATABASE_PRIVATE_URL') or
-    ''
-)
-# Ensure the URL has a valid scheme (Railway sometimes omits it)
-if _db_url and _db_url.startswith('://'):
-    _db_url = 'postgresql' + _db_url
+# Database — use individual PG vars (Railway auto-injects for same-project Postgres)
+_pg_host = os.environ.get('PGHOST')
+_pg_user = os.environ.get('PGUSER')
+_pg_pass = os.environ.get('PGPASSWORD')
+_pg_db   = os.environ.get('PGDATABASE')
+_pg_port = os.environ.get('PGPORT', '5432')
 
-if _db_url and '://' in _db_url and not _db_url.startswith('://'):
-    DATABASES = {'default': dj_database_url.parse(_db_url, conn_max_age=600)}
+if _pg_host and _pg_user and _pg_db:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': _pg_db,
+            'USER': _pg_user,
+            'PASSWORD': _pg_pass or '',
+            'HOST': _pg_host,
+            'PORT': _pg_port,
+            'CONN_MAX_AGE': 600,
+        }
+    }
 else:
     DATABASES = {
         'default': {
