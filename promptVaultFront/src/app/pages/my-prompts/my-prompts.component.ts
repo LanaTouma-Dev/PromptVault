@@ -11,6 +11,7 @@ import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { AuthModalComponent } from '../../components/auth-modal/auth-modal.component';
 import { AddPromptModalComponent } from '../../components/add-prompt-modal/add-prompt-modal.component';
 import { SaveToCollectionModalComponent } from '../../components/save-to-collection-modal/save-to-collection-modal.component';
+import { SharePromptModalComponent } from '../../components/share-prompt-modal/share-prompt-modal.component';
 
 function colorIndex(s: string): number {
   let h = 0;
@@ -25,6 +26,7 @@ function colorIndex(s: string): number {
     CommonModule,
     NavbarComponent, SidebarComponent,
     AuthModalComponent, AddPromptModalComponent, SaveToCollectionModalComponent,
+    SharePromptModalComponent,
   ],
   styles: [`
     main { background: var(--bg); }
@@ -139,7 +141,7 @@ function colorIndex(s: string): number {
       (selectTag)="router.navigate(['/'], { queryParams: { tag: $event } })"
     />
 
-    <main class="ml-56 pt-[52px] min-h-screen">
+    <main class="ml-56 pt-[44px] min-h-screen">
       <div class="max-w-5xl mx-auto px-6 py-6">
 
         <!-- Fork success banner -->
@@ -330,8 +332,13 @@ function colorIndex(s: string): number {
                   </button>
                   <button class="oa-btn vis" (click)="toggleVisibility(p)">
                     <span class="material-symbols-outlined" style="font-size:14px;">{{ p.visibility==='private'?'public':'lock' }}</span>
-                    {{ p.visibility==='private'?'Share':'Make private' }}
+                    {{ p.visibility==='private'?'Make public':'Make private' }}
                   </button>
+                  @if (p.visibility === 'private') {
+                    <button class="oa-btn" (click)="openShare(p)">
+                      <span class="material-symbols-outlined" style="font-size:14px;">person_add</span>Share
+                    </button>
+                  }
                   <button class="oa-btn danger" (click)="confirmDelete(p)">
                     <span class="material-symbols-outlined" style="font-size:14px;">delete</span>Delete
                   </button>
@@ -382,6 +389,9 @@ function colorIndex(s: string): number {
     @if (promptToSave) {
       <app-save-to-collection-modal [prompt]="promptToSave" (close)="promptToSave = null" />
     }
+    @if (promptToShare()) {
+      <app-share-prompt-modal [promptId]="promptToShare()!.id" (close)="promptToShare.set(null)" />
+    }
   `,
 })
 export class MyPromptsComponent implements OnInit, AfterViewInit {
@@ -395,6 +405,7 @@ export class MyPromptsComponent implements OnInit, AfterViewInit {
   activeTab      = signal<'all' | 'shared' | 'private'>('all');
   promptToDelete = signal<Prompt | null>(null);
   promptToEdit   = signal<Prompt | null>(null);
+  promptToShare  = signal<Prompt | null>(null);
   deleting       = signal(false);
   skeletons      = Array(6).fill(0);
 
@@ -472,7 +483,8 @@ export class MyPromptsComponent implements OnInit, AfterViewInit {
     });
   }
 
-  openEdit(p: Prompt) { this.promptToEdit.set(p); this.showEditModal = true; }
+  openEdit(p: Prompt)  { this.promptToEdit.set(p); this.showEditModal = true; }
+  openShare(p: Prompt) { this.promptToShare.set(p); }
   closeEditModal()    { this.showEditModal = false; this.promptToEdit.set(null); }
   closeAddModal()     { this.showAddPrompt = false; }
 

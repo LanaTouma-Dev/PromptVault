@@ -185,6 +185,19 @@ class Collection(models.Model):
         return self.items.count()
 
 
+class PromptShare(models.Model):
+    prompt      = models.ForeignKey(Prompt, on_delete=models.CASCADE, related_name='shares')
+    shared_by   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shares_given')
+    shared_with = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shares_received')
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('prompt', 'shared_with')
+
+    def __str__(self):
+        return f'{self.shared_by.username} → {self.shared_with.username}: {self.prompt.title}'
+
+
 class CollectionItem(models.Model):
     collection = models.ForeignKey(Collection, on_delete=models.CASCADE, related_name='items')
     prompt     = models.ForeignKey(Prompt, on_delete=models.CASCADE, related_name='collection_items')

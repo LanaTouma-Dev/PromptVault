@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Comment, Prompt, PaginatedResponse, PromptFilters, PublicProfile } from '../../models/prompt.model';
+import { Comment, Prompt, PaginatedResponse, PromptFilters, PromptShare, PublicProfile } from '../../models/prompt.model';
 import { environment } from '../../../environments/environment';
 
 const API = environment.apiUrl;
@@ -58,6 +58,15 @@ export class PromptService {
     });
   }
   deleteComment(commentId: number) { return this.http.delete(`${API}/comments/${commentId}/`); }
+
+  // ── Sharing ────────────────────────────────────────────────────────────────
+  getSharedWithMe() {
+    const params = new HttpParams().set('shared_with_me', 'true').set('ordering', '-created_at').set('page_size', '200');
+    return this.http.get<PaginatedResponse<Prompt>>(`${API}/prompts/`, { params });
+  }
+  listShares(promptId: number)    { return this.http.get<PromptShare[]>(`${API}/prompts/${promptId}/shares/`); }
+  sharePrompt(promptId: number, username: string) { return this.http.post<PromptShare>(`${API}/prompts/${promptId}/share/`, { username }); }
+  unsharePrompt(promptId: number, userId: number) { return this.http.delete(`${API}/prompts/${promptId}/share/${userId}/`); }
 
   // ── Public profile ─────────────────────────────────────────────────────────
   getPublicProfile(username: string) { return this.http.get<PublicProfile>(`${API}/profile/${username}/`); }

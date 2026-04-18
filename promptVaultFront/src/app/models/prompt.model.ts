@@ -18,6 +18,7 @@ export interface Prompt {
   forked_from: ForkOrigin | null;
   comment_count?: number;
   created_at: string; updated_at: string; has_voted: boolean;
+  shared_by?: { id: number; username: string } | null;
 }
 
 export interface Comment {
@@ -32,6 +33,13 @@ export interface Collection {
   id: number; name: string; description: string; icon: string; is_public: boolean;
   prompt_count: number; preview_prompts: { id: number; title: string }[];
   owner_username: string; created_at: string; updated_at: string;
+}
+
+export interface PromptShare {
+  id: number;
+  shared_with_id: number;
+  shared_with_username: string;
+  created_at: string;
 }
 
 export interface PublicProfile {

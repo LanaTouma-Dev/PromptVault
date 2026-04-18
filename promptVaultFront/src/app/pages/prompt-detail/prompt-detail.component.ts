@@ -11,6 +11,7 @@ import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { AuthModalComponent } from '../../components/auth-modal/auth-modal.component';
 import { AddPromptModalComponent } from '../../components/add-prompt-modal/add-prompt-modal.component';
 import { SaveToCollectionModalComponent } from '../../components/save-to-collection-modal/save-to-collection-modal.component';
+import { SharePromptModalComponent } from '../../components/share-prompt-modal/share-prompt-modal.component';
 
 interface Segment { type: 'text' | 'variable'; value: string; }
 
@@ -39,7 +40,8 @@ function repLevel(rep: number): { label: string; color: string } {
   standalone: true,
   imports: [CommonModule, DatePipe, FormsModule, RouterModule,
             NavbarComponent, SidebarComponent,
-            AuthModalComponent, AddPromptModalComponent, SaveToCollectionModalComponent],
+            AuthModalComponent, AddPromptModalComponent, SaveToCollectionModalComponent,
+            SharePromptModalComponent],
   styles: [`
     main { background: var(--bg); }
     .back-btn { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-muted); transition: color 0.12s; cursor: pointer; background: none; border: none; padding: 0; }
@@ -90,9 +92,10 @@ function repLevel(rep: number): { label: string; color: string } {
     .action-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .action-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--text-muted); transition: all 0.12s; }
     .action-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border-mid); }
-    .action-btn.fork:hover { background: var(--accent-bg); color: var(--accent-txt); border-color: var(--accent); }
-    .action-btn.forked     { background: var(--accent-bg); color: var(--accent-txt); border-color: var(--accent); }
-    .action-btn:disabled   { opacity: 0.5; cursor: not-allowed; }
+    .action-btn.fork:hover    { background: var(--accent-bg); color: var(--accent-txt); border-color: var(--accent); }
+    .action-btn.forked        { background: var(--accent-bg); color: var(--accent-txt); border-color: var(--accent); }
+    .action-btn.danger:hover  { background: var(--hot-bg); color: var(--hot); border-color: var(--hot); }
+    .action-btn:disabled      { opacity: 0.5; cursor: not-allowed; }
     .rep-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; background: var(--surface2); border: 1px solid var(--border); }
     .toast-bar { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-radius: 12px; background: var(--hot-bg); border: 1px solid var(--hot); color: var(--hot); font-size: 14px; font-weight: 500; box-shadow: 0 8px 32px rgba(0,0,0,0.2); animation: toastIn 0.2s cubic-bezier(.22,1,.36,1) both; white-space: nowrap; }
     @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(12px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
@@ -126,7 +129,7 @@ function repLevel(rep: number): { label: string; color: string } {
       </div>
     }
 
-    <main class="ml-56 pt-[52px] min-h-screen">
+    <main class="ml-56 pt-[44px] min-h-screen">
       @if (loading()) {
         <div class="max-w-6xl mx-auto px-6 py-6 space-y-4">
           <div class="skeleton-line h-3 w-28"></div>
@@ -241,11 +244,20 @@ function repLevel(rep: number): { label: string; color: string } {
                   Save
                 </button>
               } @else {
-                <!-- Just show the count, not a clickable button -->
                 <span class="flex items-center gap-1.5 text-[13px]" style="color:var(--text-muted);">
                   <span class="material-symbols-outlined" style="font-size:16px;">arrow_upward</span>
                   {{ prompt()!.vote_count }} upvotes
                 </span>
+                @if (prompt()!.visibility === 'private') {
+                  <button class="action-btn" (click)="showShare = true">
+                    <span class="material-symbols-outlined" style="font-size:16px;">person_add</span>
+                    Share
+                  </button>
+                }
+                <button class="action-btn danger" (click)="showDeleteConfirm = true">
+                  <span class="material-symbols-outlined" style="font-size:16px;">delete</span>
+                  Delete
+                </button>
               }
 
               <!-- Fork: only shown on OTHER people's shared prompts -->
@@ -511,10 +523,36 @@ function repLevel(rep: number): { label: string; color: string } {
       </div>
     </ng-template>
 
+    @if (showDeleteConfirm) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+           style="background:rgba(0,0,0,0.5); backdrop-filter:blur(4px);" (click)="showDeleteConfirm = false">
+        <div class="rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+             style="background:var(--surface); border:1px solid var(--border);" (click)="$event.stopPropagation()">
+          <div class="flex items-center justify-center w-12 h-12 rounded-full mb-4 mx-auto" style="background:var(--hot-bg);">
+            <span class="material-symbols-outlined text-[22px]" style="color:var(--hot);">delete</span>
+          </div>
+          <h3 class="font-display font-bold text-[16px] text-center mb-1" style="color:var(--text);">Delete prompt?</h3>
+          <p class="text-[13px] text-center mb-5" style="color:var(--text-muted);">
+            "{{ prompt()!.title }}" will be permanently removed. This cannot be undone.
+          </p>
+          <div class="flex gap-3">
+            <button (click)="showDeleteConfirm = false"
+              class="flex-1 h-9 rounded-lg text-[13px] font-semibold border transition"
+              style="background:transparent; border-color:var(--border); color:var(--text-muted);">Cancel</button>
+            <button (click)="doDelete()" [disabled]="deleting()"
+              class="flex-1 h-9 rounded-lg text-[13px] font-semibold text-white border-none transition hover:opacity-85 disabled:opacity-50"
+              style="background:var(--hot);">{{ deleting() ? 'Deleting…' : 'Delete' }}</button>
+          </div>
+        </div>
+      </div>
+    }
     @if (showAuth)      { <app-auth-modal (close)="showAuth = false" /> }
     @if (showAddPrompt) { <app-add-prompt-modal (close)="showAddPrompt = false" (saved)="showAddPrompt = false" /> }
     @if (showSaveToCollection && prompt()) {
       <app-save-to-collection-modal [prompt]="prompt()!" (close)="showSaveToCollection = false" />
+    }
+    @if (showShare && prompt()) {
+      <app-share-prompt-modal [promptId]="prompt()!.id" (close)="showShare = false" />
     }
   `,
 })
@@ -534,6 +572,9 @@ export class PromptDetailComponent implements OnInit {
   showAuth             = false;
   showAddPrompt        = false;
   showSaveToCollection = false;
+  showDeleteConfirm    = false;
+  showShare            = false;
+  deleting             = signal(false);
 
   varValues   = signal<Record<string, string>>({});
   segments    = computed<Segment[]>(() => parseContent(this.prompt()?.content ?? ''));
@@ -647,6 +688,16 @@ export class PromptDetailComponent implements OnInit {
       this.promptService.trackCopy(this.prompt()!.id).subscribe();
       this.copied.set(true);
       setTimeout(() => this.copied.set(false), 2500);
+    });
+  }
+
+  doDelete() {
+    const p = this.prompt();
+    if (!p) return;
+    this.deleting.set(true);
+    this.promptService.deletePrompt(p.id).subscribe({
+      next: () => this.router.navigate(['/']),
+      error: () => this.deleting.set(false),
     });
   }
 

@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from .models import Category, Tag, AITool, UserProfile, Prompt, Vote, Comment, Collection, CollectionItem
+from .models import Category, Tag, AITool, UserProfile, Prompt, Vote, Comment, Collection, CollectionItem, PromptShare
 
 
 class AIToolSerializer(serializers.ModelSerializer):
@@ -72,6 +72,7 @@ class PromptListSerializer(serializers.ModelSerializer):
     has_voted        = serializers.SerializerMethodField()
     fork_count       = serializers.IntegerField(read_only=True)
     forked_from      = ForkOriginSerializer(read_only=True)
+    shared_by        = serializers.SerializerMethodField()
 
     class Meta:
         model  = Prompt
@@ -79,7 +80,7 @@ class PromptListSerializer(serializers.ModelSerializer):
             'id', 'title', 'description', 'variables',
             'author', 'category', 'tags', 'compatible_tools',
             'visibility', 'is_hot', 'vote_count', 'copy_count', 'fork_count',
-            'forked_from', 'created_at', 'updated_at', 'has_voted',
+            'forked_from', 'created_at', 'updated_at', 'has_voted', 'shared_by',
         ]
 
     def get_has_voted(self, obj):
@@ -87,6 +88,14 @@ class PromptListSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return obj.votes.filter(user=request.user).exists()
         return False
+
+    def get_shared_by(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            share = obj.shares.filter(shared_with=request.user).select_related('shared_by').first()
+            if share:
+                return {'id': share.shared_by.id, 'username': share.shared_by.username}
+        return None
 
 
 class PromptDetailSerializer(serializers.ModelSerializer):
@@ -228,6 +237,17 @@ class PublicProfileSerializer(serializers.ModelSerializer):
 
     def get_fork_count(self, obj):
         return sum(p.forks.count() for p in obj.prompts.all())
+
+
+# ── Prompt sharing ────────────────────────────────────────────────────────────
+
+class PromptShareSerializer(serializers.ModelSerializer):
+    shared_with_id       = serializers.IntegerField(source='shared_with.id', read_only=True)
+    shared_with_username = serializers.CharField(source='shared_with.username', read_only=True)
+
+    class Meta:
+        model  = PromptShare
+        fields = ['id', 'shared_with_id', 'shared_with_username', 'created_at']
 
 
 # ── Collections ───────────────────────────────────────────────────────────────

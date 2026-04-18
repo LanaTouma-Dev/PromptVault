@@ -65,7 +65,7 @@ function colorIndex(s: string): number {
       (selectCategory)="router.navigate(['/'], { queryParams: { cat: $event } })"
     />
 
-    <main class="ml-56 pt-[52px] min-h-screen">
+    <main class="ml-56 pt-[44px] min-h-screen">
       <div class="max-w-5xl mx-auto px-6 py-6">
 
         <div class="flex items-center justify-between mb-6">

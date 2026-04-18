@@ -56,7 +56,7 @@ import { Collection, Prompt } from '../../models/prompt.model';
     />
     <app-sidebar (selectCategory)="goToCategory($event)" (selectTag)="goToTag($event)" />
 
-    <main class="ml-56 pt-[52px] min-h-screen">
+    <main class="ml-56 pt-[44px] min-h-screen">
       <div class="max-w-5xl mx-auto px-6 py-6">
 
         <button class="back-btn" (click)="router.navigate(['/'])">

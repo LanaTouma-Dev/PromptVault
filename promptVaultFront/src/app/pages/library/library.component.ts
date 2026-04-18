@@ -41,10 +41,19 @@ import { SaveToCollectionModalComponent } from '../../components/save-to-collect
     }
     .hot-card {
       flex-shrink: 0; width: 230px; background: var(--surface);
-      border: 1px solid var(--border); border-radius: 12px; padding: 14px;
-      cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
+      border: 1px solid rgba(240, 106, 58, 0.22); border-radius: 12px; padding: 14px;
+      cursor: pointer; transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+      position: relative; overflow: hidden;
     }
-    .hot-card:hover { border-color: var(--border-mid); box-shadow: 0 4px 14px rgba(96,84,232,0.09); }
+    .hot-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--hot) 0%, #f59e0b 100%);
+    }
+    .hot-card:hover {
+      border-color: rgba(240, 106, 58, 0.42);
+      box-shadow: 0 6px 22px rgba(240, 106, 58, 0.13);
+      transform: translateY(-2px);
+    }
     .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
     .sort-select {
       font-size: 13px; padding: 6px 10px; border-radius: 8px; cursor: pointer;
@@ -84,7 +93,7 @@ import { SaveToCollectionModalComponent } from '../../components/save-to-collect
       (selectTag)="setTag($event)"
     />
 
-    <main class="ml-56 pt-[52px] min-h-screen">
+    <main class="ml-56 pt-[44px] min-h-screen">
       <div class="max-w-5xl mx-auto px-6 py-6">
 
         @if (auth.isLoggedIn()) {
@@ -113,13 +122,17 @@ import { SaveToCollectionModalComponent } from '../../components/save-to-collect
 
         @if (hotPrompts().length && activeCategory() === 'all' && !searchQuery()) {
           <section class="mb-8">
-            <div class="flex items-center gap-2 mb-3">
-              <span class="material-symbols-outlined text-[20px]" style="color:var(--hot);">local_fire_department</span>
-              <h2 class="font-display font-bold text-[15px]" style="color:var(--text);">Hot Prompts</h2>
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[20px]" style="color:var(--hot);">local_fire_department</span>
+                <h2 class="font-display font-bold text-[15px]" style="color:var(--text);">Hot Prompts</h2>
+                <span class="text-[12px] font-medium px-2 py-0.5 rounded-full" style="background:var(--hot-bg); color:var(--hot);">{{ hotPrompts().length }}</span>
+              </div>
             </div>
             <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               @for (p of hotPrompts(); track p.id) {
                 <div class="hot-card" (click)="openDetail(p)">
+                  <div style="margin-top:6px;">
                   @if (p.category) {
                     <span class="inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded-full mb-2"
                           style="background:var(--hot-bg); color:var(--hot);">{{ p.category.name }}</span>
@@ -133,6 +146,7 @@ import { SaveToCollectionModalComponent } from '../../components/save-to-collect
                     <span class="flex items-center gap-1">
                       <span class="material-symbols-outlined" style="font-size:13px;">content_copy</span>{{ p.copy_count }}
                     </span>
+                  </div>
                   </div>
                 </div>
               }
@@ -184,9 +198,11 @@ import { SaveToCollectionModalComponent } from '../../components/save-to-collect
           </div>
         } @else if (prompts().length === 0) {
           <div class="flex flex-col items-center justify-center py-24 text-center">
-            <span class="material-symbols-outlined text-5xl mb-3" style="color:var(--border-mid);">search_off</span>
-            <p class="font-medium" style="color:var(--text-muted);">No prompts found</p>
-            <p class="text-[13px] mt-1" style="color:var(--text-muted);">Try a different search or category</p>
+            <div class="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style="background:var(--surface); border:1px solid var(--border);">
+              <span class="material-symbols-outlined text-[30px]" style="color:var(--text-muted);">search_off</span>
+            </div>
+            <p class="font-display font-bold text-[16px] mb-1" style="color:var(--text);">No prompts found</p>
+            <p class="text-[13px]" style="color:var(--text-muted);">Try a different search term or browse a category</p>
           </div>
         } @else {
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

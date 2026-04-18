@@ -29,9 +29,19 @@ function repLevel(rep: number): string {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 12px; padding: 18px;
       display: flex; flex-direction: column; gap: 10px;
-      cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+      overflow: hidden; position: relative;
     }
-    .shell:hover .body { border-color: var(--border-mid); box-shadow: 0 4px 18px rgba(96,84,232,0.09); }
+    .shell:hover .body {
+      border-color: var(--border-mid);
+      box-shadow: 0 8px 28px rgba(96, 84, 232, 0.14);
+      transform: translateY(-2px);
+    }
+    .hot-stripe {
+      position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 12px 12px 0 0;
+      background: linear-gradient(90deg, var(--hot) 0%, #f59e0b 100%);
+    }
     .actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; z-index: 10; }
     .shell:hover .actions { opacity: 1; }
     .action-btn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); cursor: pointer; transition: all 0.12s; }
@@ -40,11 +50,12 @@ function repLevel(rep: number): string {
     .cat-badge { flex-shrink:0; display: inline-block; padding: 2px 9px; font-size: 10px; font-weight: 700; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em; background: var(--accent-bg); color: var(--accent-txt); }
     .hot-badge { flex-shrink:0; display: inline-block; padding: 2px 9px; font-size: 10px; font-weight: 700; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em; background: var(--hot-bg); color: var(--hot); }
     .fork-badge { flex-shrink:0; display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; font-size: 10px; font-weight: 600; border-radius: 20px; background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
-    .title { font-size: 15px; font-weight: 700; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; }
-    .desc  { font-size: 13px; color: var(--text-muted); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .footer { border-top: 1px solid var(--border); padding-top: 10px; display: flex; align-items: center; justify-content: space-between; }
-    .vote-btn { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; color: var(--text-muted); cursor: pointer; background: none; border: none; padding: 0; transition: color 0.12s; }
-    .vote-btn:hover, .vote-btn.voted { color: var(--accent-txt); }
+    .title { font-size: 15px; font-weight: 800; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .desc  { font-size: 12.5px; color: var(--text-muted); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .footer { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 2px; display: flex; align-items: center; justify-content: space-between; }
+    .vote-btn { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; background: none; border: none; padding: 3px 8px; border-radius: 6px; transition: all 0.12s; }
+    .vote-btn:hover { background: var(--accent-bg); color: var(--accent-txt); }
+    .vote-btn.voted { color: var(--accent-txt); background: var(--accent-bg); }
     .copy-flash { position: absolute; bottom: 10px; right: 10px; z-index: 20; padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 600; background: #16a34a; color: #fff; pointer-events: none; animation: fadeUp 0.2s ease both; }
     @keyframes fadeUp { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
   `],
@@ -61,14 +72,15 @@ function repLevel(rep: number): string {
       @if (justCopied()) { <div class="copy-flash">Copied!</div> }
 
       <div class="body" (click)="open.emit(prompt())">
+        @if (prompt().is_hot) { <div class="hot-stripe"></div> }
 
-        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding-right:60px;">
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding-right:60px;" [style.margin-top]="prompt().is_hot ? '4px' : '0'">
           @if (prompt().category) { <span class="cat-badge">{{ prompt().category!.name }}</span> }
           @if (prompt().is_hot)   { <span class="hot-badge">🔥 Hot</span> }
           @if (prompt().forked_from) {
             <span class="fork-badge">
               <span class="material-symbols-outlined" style="font-size:11px;">fork_right</span>
-              fork
+              {{ prompt().forked_from!.author?.username ?? 'fork' }}
             </span>
           }
         </div>
@@ -92,9 +104,9 @@ function repLevel(rep: number): string {
         @if (prompt().compatible_tools.length) {
           <div style="display:flex; flex-wrap:wrap; gap:6px;">
             @for (tool of prompt().compatible_tools.slice(0, 3); track tool.id) {
-              <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; font-size:11px; font-weight:500; border-radius:20px; border:1px solid;" [ngClass]="toolChipClass(tool.pricing)">
+              <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; font-size:11px; font-weight:500; border-radius:20px; border:1px solid;" [style]="toolChipStyle(tool.pricing)">
                 <span class="material-symbols-outlined" style="font-size:11px;">smart_toy</span>
-                {{ tool.name }}<span style="opacity:0.55; font-size:10px;">· {{ pricingLabel(tool.pricing) }}</span>
+                {{ tool.name }}<span style="opacity:0.6; font-size:10px;">· {{ pricingLabel(tool.pricing) }}</span>
               </span>
             }
           </div>
@@ -115,12 +127,12 @@ function repLevel(rep: number): string {
 
         <div class="footer">
           <div style="display:flex; align-items:center; gap:8px;">
-            <div style="width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; flex-shrink:0;"
-                 [style.background]="repLevel(prompt().author.reputation)">
+            <div style="width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; flex-shrink:0;"
+                 [style.background]="avatarBg()">
               {{ initials() }}
             </div>
-            <div style="display:flex; flex-direction:column; line-height:1.2;">
-              <span style="font-size:12px; color:var(--text-muted);">{{ authorName() }}</span>
+            <div style="display:flex; flex-direction:column; line-height:1.25;">
+              <span style="font-size:12px; font-weight:500; color:var(--text);">{{ authorName() }}</span>
               <span style="font-size:10px; color:var(--text-muted);">{{ prompt().author.reputation }} rep</span>
             </div>
           </div>
@@ -158,10 +170,17 @@ export class PromptCardComponent {
   paramStyle(name: string) { const i = colorIndex(name); return `background:var(--param-${i}-bg); color:var(--param-${i}-txt); border-color:var(--param-${i}-bd);`; }
   tagStyle(name: string)   { const i = colorIndex(name); return `background:var(--tag-${i}-bg); color:var(--tag-${i}-txt);`; }
 
-  toolChipClass(p: AITool['pricing']) {
-    return p === 'free' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : p === 'freemium' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-600 border-slate-200';
+  toolChipStyle(p: AITool['pricing']) {
+    if (p === 'free')     return 'background:rgba(16,185,129,0.1); color:#10b981; border-color:rgba(16,185,129,0.28);';
+    if (p === 'freemium') return 'background:rgba(96,165,250,0.1); color:#60a5fa; border-color:rgba(96,165,250,0.28);';
+    return 'background:var(--surface2); color:var(--text-muted); border-color:var(--border);';
   }
   pricingLabel(p: AITool['pricing']) { return p === 'free' ? 'Free' : p === 'freemium' ? 'Free tier' : 'Paid'; }
+
+  avatarBg() {
+    const colors = ['#6054e8', '#0d9488', '#b45309', '#be185d', '#1d4ed8'];
+    return colors[colorIndex(this.prompt().author.username)];
+  }
 
   initials() {
     const a = this.prompt().author;

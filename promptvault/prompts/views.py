@@ -6,13 +6,13 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticate
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Category, Tag, Prompt, Vote, AITool, Comment, Collection, CollectionItem
+from .models import Category, Tag, Prompt, Vote, AITool, Comment, Collection, CollectionItem, PromptShare
 from .serializers import (
     CategorySerializer, TagSerializer, AIToolSerializer,
     PromptListSerializer, PromptDetailSerializer,
     CommentSerializer, RegisterSerializer,
     CollectionSerializer, CollectionItemSerializer,
-    PublicProfileSerializer,
+    PublicProfileSerializer, PromptShareSerializer,
 )
 
 
@@ -43,12 +43,15 @@ class PromptViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Prompt.objects.select_related('author', 'category', 'forked_from__author') \
-                           .prefetch_related('tags', 'votes', 'compatible_tools', 'forks')
+                           .prefetch_related('tags', 'votes', 'compatible_tools', 'forks',
+                                            'shares__shared_by', 'shares__shared_with')
 
         if self.request.user.is_authenticated:
             qs = qs.filter(
-                db_models.Q(visibility='shared') | db_models.Q(author=self.request.user)
-            )
+                db_models.Q(visibility='shared') |
+                db_models.Q(author=self.request.user) |
+                db_models.Q(shares__shared_with=self.request.user)
+            ).distinct()
         else:
             qs = qs.filter(visibility='shared')
 
@@ -72,6 +75,11 @@ class PromptViewSet(viewsets.ModelViewSet):
         if self.request.query_params.get('forked') == 'true':
             if self.request.user.is_authenticated:
                 qs = qs.filter(author=self.request.user, forked_from__isnull=False)
+
+        # ?shared_with_me=true → only prompts others have shared with the current user
+        if self.request.query_params.get('shared_with_me') == 'true':
+            if self.request.user.is_authenticated:
+                qs = qs.filter(shares__shared_with=self.request.user)
 
         return qs
 
@@ -173,6 +181,49 @@ class PromptViewSet(viewsets.ModelViewSet):
                                    .prefetch_related('replies__author__profile')
         serializer = CommentSerializer(top_level, many=True, context={'request': request})
         return Response({'count': top_level.count(), 'results': serializer.data})
+
+    # ── Sharing ───────────────────────────────────────────────────────────────
+
+    @action(detail=True, methods=['get'], url_path='shares', permission_classes=[IsAuthenticated])
+    def list_shares(self, request, pk=None):
+        prompt = self.get_object()
+        if prompt.author != request.user:
+            return Response({'detail': 'Not the author.'}, status=status.HTTP_403_FORBIDDEN)
+        shares = prompt.shares.select_related('shared_with')
+        serializer = PromptShareSerializer(shares, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='share', permission_classes=[IsAuthenticated])
+    def share(self, request, pk=None):
+        prompt = self.get_object()
+        if prompt.author != request.user:
+            return Response({'detail': 'Not the author.'}, status=status.HTTP_403_FORBIDDEN)
+        username = request.data.get('username', '').strip()
+        if not username:
+            return Response({'detail': 'username is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            target = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({'detail': f'User "{username}" not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if target == request.user:
+            return Response({'detail': 'You cannot share a prompt with yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+        share_obj, created = PromptShare.objects.get_or_create(
+            prompt=prompt, shared_with=target,
+            defaults={'shared_by': request.user}
+        )
+        serializer = PromptShareSerializer(share_obj)
+        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+    @action(detail=True, methods=['delete'], url_path='share/(?P<user_id>[^/.]+)',
+            permission_classes=[IsAuthenticated])
+    def unshare(self, request, pk=None, user_id=None):
+        prompt = self.get_object()
+        if prompt.author != request.user:
+            return Response({'detail': 'Not the author.'}, status=status.HTTP_403_FORBIDDEN)
+        deleted, _ = PromptShare.objects.filter(prompt=prompt, shared_with_id=user_id).delete()
+        if deleted:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({'detail': 'Share not found.'}, status=status.HTTP_404_NOT_FOUND)
 
     @action(detail=True, methods=['post'], url_path='comments/add',
             permission_classes=[IsAuthenticated])

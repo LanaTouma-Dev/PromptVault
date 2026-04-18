@@ -12,51 +12,97 @@ import { AuthService } from '../../core/services/auth.service';
   standalone: true,
   imports: [CommonModule, RouterModule],
   styles: [`
+    /* Active nav link override */
     :host ::ng-deep a.active-nav {
-      background: var(--accent-bg) !important;
       color: var(--accent-txt) !important;
+      border-left-color: var(--accent) !important;
+      background: var(--accent-bg) !important;
     }
-    .nav-btn {
+
+    /* Shared item base */
+    .nav-btn, .nav-link, .my-space-link {
       width: 100%; display: flex; align-items: center; gap: 10px;
-      padding: 7px 10px; border-radius: 8px; border: none;
+      padding: 7px 10px 7px 7px;
+      border-left: 3px solid transparent;
+      border-radius: 0 8px 8px 0;
+      border-top: none; border-right: none; border-bottom: none;
       font-size: 13px; font-weight: 500; cursor: pointer;
       background: transparent; color: var(--text-muted);
-      transition: background 0.12s, color 0.12s; text-align: left;
+      text-decoration: none; text-align: left;
+      transition: background 0.15s, color 0.15s, border-color 0.2s, transform 0.15s;
     }
-    .nav-btn:hover  { background: var(--surface2); color: var(--text); }
-    .nav-btn.active { background: var(--accent-bg); color: var(--accent-txt); }
-    .nav-link {
-      display: flex; align-items: center; gap: 10px;
-      padding: 7px 10px; border-radius: 8px;
-      font-size: 13px; font-weight: 500; cursor: pointer;
-      color: var(--text-muted); text-decoration: none;
-      transition: background 0.12s, color 0.12s;
+
+    /* Hover — nudge right, NOT on active */
+    .nav-btn:not(.active):hover,
+    .nav-link:not(.active-nav):hover,
+    .my-space-link:not(.active-nav):hover {
+      background: var(--surface2);
+      color: var(--text);
+      transform: translateX(3px);
     }
-    .nav-link:hover { background: var(--surface2); color: var(--text); }
-    .section-label {
-      font-size: 10px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.07em; color: var(--text-muted);
-      padding: 0 10px; margin: 16px 0 4px;
+
+    /* Active KB category */
+    .nav-btn.active {
+      color: var(--accent-txt);
+      border-left-color: var(--accent);
+      background: var(--accent-bg);
     }
-    .section-label:first-child { margin-top: 0; }
+
+    /* MY SPACE links — bolder */
+    .my-space-link { font-weight: 600; }
+
+    /* Count badge */
     .count {
-      margin-left: auto; font-size: 11px; font-weight: 400;
-      color: var(--text-muted); tabular-nums: true;
+      margin-left: auto; font-size: 11px; font-weight: 500;
+      color: var(--text-muted); padding: 1px 7px;
+      border-radius: 20px; transition: background 0.15s, color 0.15s;
     }
+    .nav-btn.active .count {
+      background: var(--accent-bg);
+      color: var(--accent-txt);
+    }
+
+    .section-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted);
+      padding: 0 10px; margin: 18px 0 4px;
+    }
+    .section-label:first-child { margin-top: 4px; }
+
     .tag-pill {
       padding: 2px 9px; font-size: 11px; font-weight: 500;
       border-radius: 20px; border: 1px solid var(--border);
       background: var(--surface2); color: var(--text-muted);
-      cursor: pointer; transition: all 0.12s;
+      cursor: pointer; transition: all 0.15s;
     }
-    .tag-pill:hover  { border-color: var(--border-mid); color: var(--text); }
+    .tag-pill:hover  { border-color: var(--border-mid); color: var(--text); transform: translateY(-1px); }
     .tag-pill.active { background: var(--accent-bg); color: var(--accent-txt); border-color: var(--border-mid); }
+
+    /* User profile footer */
+    .profile-footer {
+      padding: 12px 10px;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+      flex-shrink: 0;
+    }
+    .profile-avatar {
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: #fff;
+    }
+    .rep-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 10px; font-weight: 600;
+      padding: 1px 6px; border-radius: 20px;
+      background: var(--accent-bg); color: var(--accent-txt);
+      margin-top: 2px;
+    }
   `],
   template: `
-    <aside class="fixed left-0 top-[52px] w-56 flex flex-col"
-           style="height:calc(100vh - 52px); background:var(--surface); border-right:1px solid var(--border);">
+    <aside class="fixed left-0 top-[44px] w-56 flex flex-col"
+           style="height:calc(100vh - 44px); background:var(--surface); border-right:1px solid var(--border);">
 
-      <div class="flex-1 overflow-y-auto py-3 px-2">
+      <div class="flex-1 overflow-y-auto py-2 pr-2">
 
         <p class="section-label">Knowledge Base</p>
 
@@ -79,19 +125,21 @@ import { AuthService } from '../../core/services/auth.service';
         @if (auth.isLoggedIn()) {
           <p class="section-label">My Space</p>
 
-          <a routerLink="/my-prompts" routerLinkActive="active-nav" class="nav-link">
-            <span class="material-symbols-outlined" style="font-size:18px;">lock</span>
+          <a routerLink="/my-prompts" routerLinkActive="active-nav" class="my-space-link">
+            <span class="material-symbols-outlined" style="font-size:18px;">description</span>
             My Prompts
           </a>
-
-          <a routerLink="/my-forks" routerLinkActive="active-nav" class="nav-link">
+          <a routerLink="/my-forks" routerLinkActive="active-nav" class="my-space-link">
             <span class="material-symbols-outlined" style="font-size:18px;">fork_right</span>
             My Forks
+          </a>
+          <a routerLink="/shared-with-me" routerLinkActive="active-nav" class="my-space-link">
+            <span class="material-symbols-outlined" style="font-size:18px;">group</span>
+            Shared with me
           </a>
 
           @if (collections().length > 0) {
             <p class="section-label">Collections</p>
-
             @for (c of collections(); track c.id) {
               <a [routerLink]="['/collection', c.id]" routerLinkActive="active-nav" class="nav-link">
                 <span class="material-symbols-outlined" style="font-size:18px;">bookmark</span>
@@ -103,7 +151,7 @@ import { AuthService } from '../../core/services/auth.service';
         }
 
         <p class="section-label">Popular Tags</p>
-        <div style="display:flex; flex-wrap:wrap; gap:6px; padding:2px 2px 4px;">
+        <div style="display:flex; flex-wrap:wrap; gap:6px; padding:2px 10px 8px;">
           @for (tag of tags; track tag.id) {
             <button class="tag-pill" [class.active]="activeTag() === tag.slug"
               (click)="selectTag.emit(tag.slug)">
@@ -111,11 +159,29 @@ import { AuthService } from '../../core/services/auth.service';
             </button>
           }
           @if (tags.length === 0) {
-            <span style="font-size:12px; color:var(--text-muted); font-style:italic;">No tags yet.</span>
+            <span style="font-size:12px; color:var(--text-muted); font-style:italic; padding: 0 0 4px;">No tags yet.</span>
           }
         </div>
 
       </div>
+
+      @if (auth.isLoggedIn() && auth.user()) {
+        <div class="profile-footer">
+          <div class="profile-avatar" [style.background]="avatarBg()">
+            {{ auth.user()?.username?.[0]?.toUpperCase() }}
+          </div>
+          <div style="min-width:0; flex:1;">
+            <p style="font-size:12px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              {{ auth.user()?.username }}
+            </p>
+            <div class="rep-badge">
+              <span class="material-symbols-outlined" style="font-size:10px;">workspace_premium</span>
+              {{ auth.user()?.reputation ?? 0 }} rep
+            </div>
+          </div>
+        </div>
+      }
+
     </aside>
   `,
 })
@@ -149,5 +215,13 @@ export class SidebarComponent implements OnInit {
     this.collectionService.getMyCollections().subscribe(res => {
       this.collections.set(res.results);
     });
+  }
+
+  avatarBg() {
+    const colors = ['#6054e8','#0d9488','#b45309','#be185d','#1d4ed8'];
+    const u = this.auth.user()?.username ?? '';
+    let h = 0;
+    for (let i = 0; i < u.length; i++) h = (h * 31 + u.charCodeAt(i)) >>> 0;
+    return colors[h % 5];
   }
 }
