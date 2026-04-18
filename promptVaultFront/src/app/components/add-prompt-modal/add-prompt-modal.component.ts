@@ -251,7 +251,7 @@ type ModelEntry = Pick<AITool, 'name' | 'pricing' | 'color'> & { id?: number };
               <div>
                 <label>Visibility</label>
                 <select [(ngModel)]="form.visibility">
-                  <option value="shared">Shared (team)</option>
+                  <option value="shared">Public</option>
                   <option value="private">Private</option>
                 </select>
               </div>

@@ -207,7 +207,7 @@ function repLevel(rep: number): { label: string; color: string } {
               @if (prompt()!.category) { <span class="cat-badge">{{ prompt()!.category!.name }}</span> }
               @if (prompt()!.is_hot)   { <span class="hot-badge">🔥 Hot</span> }
               <span class="px-2.5 py-0.5 text-[11px] font-semibold rounded-full uppercase tracking-wide"
-                    style="background:var(--surface2); color:var(--text-muted);">{{ prompt()!.visibility }}</span>
+                    style="background:var(--surface2); color:var(--text-muted);">{{ prompt()!.visibility === 'shared' ? 'Public' : 'Private' }}</span>
             </div>
             <h1 class="font-display font-extrabold text-[28px] mb-2 leading-tight" style="color:var(--text);">{{ prompt()!.title }}</h1>
             <p class="text-[15px] leading-relaxed max-w-2xl" style="color:var(--text-muted);">{{ prompt()!.description }}</p>
@@ -456,7 +456,7 @@ function repLevel(rep: number): { label: string; color: string } {
                 @if (prompt()!.category) {
                   <div class="meta-row"><span style="color:var(--text-muted);">Category</span><span class="font-medium" style="color:var(--text);">{{ prompt()!.category!.name }}</span></div>
                 }
-                <div class="meta-row"><span style="color:var(--text-muted);">Visibility</span><span class="font-medium capitalize" style="color:var(--text);">{{ prompt()!.visibility }}</span></div>
+                <div class="meta-row"><span style="color:var(--text-muted);">Visibility</span><span class="font-medium" style="color:var(--text);">{{ prompt()!.visibility === 'shared' ? 'Public' : 'Private' }}</span></div>
                 <div class="meta-row"><span style="color:var(--text-muted);">Created</span><span class="font-medium" style="color:var(--text);">{{ prompt()!.created_at | date:'MMM d, y' }}</span></div>
                 <div class="meta-row"><span style="color:var(--text-muted);">Updated</span><span class="font-medium" style="color:var(--text);">{{ prompt()!.updated_at | date:'MMM d, y' }}</span></div>
               </div>

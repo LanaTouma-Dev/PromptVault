@@ -211,7 +211,7 @@ function colorIndex(s: string): number {
           <button #btn1 class="pill-btn" [class.active]="activeTab()==='shared'"
             (click)="setTab('shared', btn1)">
             <span class="material-symbols-outlined text-[13px] align-middle mr-1">public</span>
-            Shared ({{ sharedCount() }})
+            Public ({{ sharedCount() }})
           </button>
           <button #btn2 class="pill-btn" [class.active]="activeTab()==='private'"
             (click)="setTab('private', btn2)">
@@ -243,7 +243,7 @@ function colorIndex(s: string): number {
             </div>
             <p class="font-display font-bold text-[16px] mb-1" style="color:var(--text);">
               @if (activeTab() === 'private') { No private prompts yet }
-              @else if (activeTab() === 'shared') { No shared prompts yet }
+              @else if (activeTab() === 'shared') { No public prompts yet }
               @else { No prompts yet }
             </p>
             <p class="text-[13px] mb-5" style="color:var(--text-muted);">
@@ -273,7 +273,7 @@ function colorIndex(s: string): number {
                     }
                     <span class="vis-pill" [class]="p.visibility==='private'?'vis-pill vis-private':'vis-pill vis-shared'">
                       <span class="material-symbols-outlined" style="font-size:10px;">{{ p.visibility==='private'?'lock':'public' }}</span>
-                      {{ p.visibility }}
+                      {{ p.visibility==='private' ? 'Private' : 'Public' }}
                     </span>
                     @if (p.category) {
                       <span class="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wide"
